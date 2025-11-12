@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Admin Dashboard</h1>
+    <p class="lead">System Administration</p>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Users</h5>
+                    <h2 class="text-primary">{{ total_users }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Resources</h5>
+                    <h2 class="text-info">{{ total_resources }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Bookings</h5>
+                    <h2 class="text-success">{{ total_bookings }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Approvals</h5>
+                    <h2 class="text-warning">{{ pending_bookings + pending_resources|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('admin.approvals') }}" class="btn btn-warning">
+                            <i class="bi bi-check-circle"></i> Approvals Queue ({{ pending_bookings + pending_resources|length }})
+                        </a>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-primary">Manage Users</a>
+                        <a href="{{ url_for('admin.resources') }}" class="btn btn-info">Manage Resources</a>
+                        <a href="{{ url_for('admin.bookings') }}" class="btn btn-success">Manage Bookings</a>
+                        <a href="{{ url_for('admin.reviews') }}" class="btn btn-secondary">Moderate Reviews</a>
+                        <a href="{{ url_for('admin.reported_messages') }}" class="btn btn-danger">Reported Messages</a>
+                        <a href="{{ url_for('admin.summary') }}" class="btn btn-info">AI Summary Report</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Bookings</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_bookings %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Resource</th>
+                                    <th>Requester</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for booking in recent_bookings[:5] %}
+                                <tr>
+                                    <td>
+                                        {% if booking.resource %}
+                                        <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}">
+                                            {{ booking.resource.title[:30] }}{% if booking.resource.title|length > 30 %}...{% endif %}
+                                        </a>
+                                        {% else %}
+                                        Resource #{{ booking.resource_id }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if booking.requester %}
+                                        {{ booking.requester.name }}
+                                        {% else %}
+                                        User #{{ booking.requester_id }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if booking.status == 'approved' %}success{% elif booking.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                                            {{ booking.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent bookings</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Resources</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_resources %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Owner</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resource in recent_resources[:5] %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">
+                                            {{ resource.title[:30] }}{% if resource.title|length > 30 %}...{% endif %}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if resource.owner %}
+                                        {{ resource.owner.name }}
+                                        {% else %}
+                                        User #{{ resource.owner_id }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if resource.status == 'published' %}success{% elif resource.status == 'draft' %}warning{% else %}secondary{% endif %}">
+                                            {{ resource.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent resources</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% block title %}Book Resource - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Book: {{ resource.title }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Resource Details:</strong><br>
+                        {% if resource.location %}<i class="bi bi-geo-alt"></i> {{ resource.location }}<br>{% endif %}
+                        {% if resource.capacity %}Capacity: {{ resource.capacity }} people<br>{% endif %}
+                    </div>
+
+                    <!-- Availability Information -->
+                    {% if availability_rules_parsed and availability_rules_parsed is mapping and availability_rules_parsed|length > 0 %}
+                    <div class="alert alert-success">
+                        <strong><i class="bi bi-calendar-check"></i> Available Times:</strong>
+                        <ul class="list-unstyled mb-0 mt-2">
+                            {% for day, hours in availability_rules_parsed.items() %}
+                            <li><strong>{{ day|title }}:</strong> {{ hours }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if unavailable %}
+                    <div class="alert alert-warning">
+                        <h5 class="alert-heading">Time Slot Unavailable</h5>
+                        <p>The requested time slot is not available. Would you like to join the waitlist?</p>
+                        <form method="POST" action="{{ url_for('bookings.join_waitlist', resource_id=resource.resource_id) }}">
+                            <input type="hidden" name="requested_datetime" value="{{ requested_start.isoformat() }}">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-clock-history"></i> Join Waitlist
+                            </button>
+                            <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-secondary">
+                                Go Back
+                            </a>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" id="booking-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="start_date" class="form-label">Date *</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end_date" class="form-label">End Date (if different)</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date">
+                            </div>
+                        </div>
+
+                        <!-- Visual Time Slot Calendar -->
+                        <div class="mb-4" id="time-slot-calendar-container" style="display: none;">
+                            <label class="form-label">Select Time Slots *</label>
+                            <div class="alert alert-info mb-3">
+                                <small>
+                                    <i class="bi bi-info-circle"></i> 
+                                    Click on available (green) time slots to select your booking time. 
+                                    Booked slots are shown in red.
+                                </small>
+                            </div>
+                            <div id="time-slot-calendar" class="time-slot-grid">
+                                <!-- Time slots will be dynamically generated here -->
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <span class="time-slot-legend-item">
+                                        <span class="time-slot-legend available"></span> Available
+                                    </span>
+                                    <span class="time-slot-legend-item ms-3">
+                                        <span class="time-slot-legend booked"></span> Booked
+                                    </span>
+                                    <span class="time-slot-legend-item ms-3">
+                                        <span class="time-slot-legend selected"></span> Selected
+                                    </span>
+                                </small>
+                            </div>
+                            <div class="mt-3" id="selected-time-display">
+                                <strong>Selected:</strong> 
+                                <span id="selected-time-text" class="text-muted">No time selected</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Fallback dropdowns (hidden, kept for form validation) -->
+                        <input type="hidden" id="start_time" name="start_time" required>
+                        <input type="hidden" id="end_time" name="end_time" required>
+                        
+                        <input type="hidden" id="start_datetime" name="start_datetime">
+                        <input type="hidden" id="end_datetime" name="end_datetime">
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Any special requests or notes for the resource owner..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                               class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Submit Booking Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set minimum date to today and handle time slot selection
+document.addEventListener('DOMContentLoaded', function() {
+    // Get today's date in local timezone (YYYY-MM-DD format)
+    const now = new Date();
+    const today = now.getFullYear() + '-' + 
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                  String(now.getDate()).padStart(2, '0');
+    
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const resourceId = {{ resource.resource_id }};
+    
+    // Set minimum to today (allows selecting today)
+    startDateInput.setAttribute('min', today);
+    // Set default value to today so user can easily select it
+    if (!startDateInput.value) {
+        startDateInput.value = today;
+    }
+    if (endDateInput) {
+        endDateInput.setAttribute('min', today);
+    }
+    
+    let selectedStartSlot = null;
+    let selectedEndSlot = null;
+    let allSlotsData = [];
+    let isLoading = false;
+    
+    // Function to handle date selection
+    function handleDateSelection() {
+        const selectedDate = startDateInput.value;
+        if (selectedDate && !isLoading) {
+            isLoading = true;
+            loadTimeSlots(selectedDate).finally(() => {
+                isLoading = false;
+            });
+            // Auto-set end date to same as start date if not set
+            if (!endDateInput.value) {
+                endDateInput.value = selectedDate;
+            }
+        } else if (!selectedDate) {
+            document.getElementById('time-slot-calendar-container').style.display = 'none';
+        }
+    }
+    
+    // Load time slots when date is selected
+    startDateInput.addEventListener('change', handleDateSelection);
+    
+    // Also load time slots on page load if date is already set (for pre-filled today)
+    if (startDateInput.value) {
+        handleDateSelection();
+    }
+
+    function loadTimeSlots(date) {
+        console.log('Loading time slots for date:', date);
+        return fetch(`/api/time-slots/${resourceId}?date=${date}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Time slots API response:', data);
+                if (data.error) {
+                    console.error('API error:', data.error);
+                    document.getElementById('time-slot-calendar-container').style.display = 'none';
+                    // Don't show alert for expected errors (like day not available)
+                    if (data.error !== 'This day is not available for booking') {
+                        alert('Error loading time slots: ' + data.error);
+                    }
+                    return;
+                }
+                
+                allSlotsData = data.all_slots || data.available_slots || [];
+                console.log('Parsed slots:', allSlotsData.length);
+                
+                if (allSlotsData.length === 0) {
+                    console.warn('No time slots returned for this date');
+                    document.getElementById('time-slot-calendar-container').style.display = 'none';
+                    // Only show alert if it's not a day availability issue
+                    if (data.day_available !== false) {
+                        alert('No time slots available for this date. All slots may be booked or outside availability hours.');
+                    }
+                    return;
+                }
+                
+                // Show visual calendar
+                console.log('Displaying time slot calendar with', allSlotsData.length, 'slots');
+                document.getElementById('time-slot-calendar-container').style.display = 'block';
+                renderTimeSlotCalendar(allSlotsData);
+            })
+            .catch(error => {
+                console.error('Error loading time slots:', error);
+                document.getElementById('time-slot-calendar-container').style.display = 'none';
+                alert('Error loading time slots. Please check the console for details.');
+            });
+    }
+    
+    function renderTimeSlotCalendar(slots) {
+        const calendar = document.getElementById('time-slot-calendar');
+        calendar.innerHTML = '';
+        
+        // Reset selection and clear form fields
+        selectedStartSlot = null;
+        selectedEndSlot = null;
+        
+        // Clear hidden input fields
+        document.getElementById('start_time').value = '';
+        document.getElementById('end_time').value = '';
+        document.getElementById('start_datetime').value = '';
+        document.getElementById('end_datetime').value = '';
+        
+        updateSelectedTimeDisplay();
+        
+        slots.forEach((slot, index) => {
+            const slotElement = document.createElement('div');
+            slotElement.className = `time-slot ${slot.available ? 'available' : 'booked'}`;
+            slotElement.dataset.index = index;
+            slotElement.dataset.start = slot.start;
+            slotElement.dataset.end = slot.end;
+            slotElement.dataset.startDatetime = slot.start_datetime;
+            slotElement.dataset.endDatetime = slot.end_datetime;
+            slotElement.dataset.available = slot.available;
+            
+            slotElement.textContent = `${slot.start} - ${slot.end}`;
+            
+            if (slot.available) {
+                slotElement.addEventListener('click', function() {
+                    handleSlotClick(slot, index);
+                });
+            }
+            
+            calendar.appendChild(slotElement);
+        });
+    }
+    
+    function handleSlotClick(slot, index) {
+        if (!slot.available) return;
+        
+        // If no start selected, set as start (and end for single slot booking)
+        if (!selectedStartSlot) {
+            selectedStartSlot = { slot, index };
+            // For single 30-minute slot, also set end to the same slot
+            selectedEndSlot = { slot, index };
+        } 
+        // If clicking before current start, set as new start
+        else if (index < selectedStartSlot.index) {
+            selectedStartSlot = { slot, index };
+            selectedEndSlot = { slot, index }; // Reset to single slot
+        }
+        // If start is selected and clicking after it, set as end
+        else if (selectedStartSlot && index > selectedStartSlot.index) {
+            // Check if all slots between start and end are available
+            let allAvailable = true;
+            for (let i = selectedStartSlot.index; i <= index; i++) {
+                if (!allSlotsData[i].available) {
+                    allAvailable = false;
+                    break;
+                }
+            }
+            
+            if (allAvailable) {
+                selectedEndSlot = { slot, index };
+            } else {
+                alert('Please select a continuous range of available time slots.');
+                return;
+            }
+        }
+        // If clicking the same slot as start, deselect
+        else if (selectedStartSlot && index === selectedStartSlot.index) {
+            selectedStartSlot = null;
+            selectedEndSlot = null;
+        }
+        
+        updateTimeSlotDisplay();
+        updateSelectedTimeDisplay();
+    }
+    
+    function updateTimeSlotDisplay() {
+        const slots = document.querySelectorAll('.time-slot');
+        slots.forEach((slotEl, index) => {
+            slotEl.classList.remove('selected', 'selected-start', 'selected-end', 'selected-range');
+            
+            if (selectedStartSlot && selectedEndSlot) {
+                if (index === selectedStartSlot.index) {
+                    slotEl.classList.add('selected', 'selected-start');
+                } else if (index === selectedEndSlot.index) {
+                    slotEl.classList.add('selected', 'selected-end');
+                } else if (index > selectedStartSlot.index && index < selectedEndSlot.index) {
+                    slotEl.classList.add('selected', 'selected-range');
+                }
+            } else if (selectedStartSlot && index === selectedStartSlot.index) {
+                slotEl.classList.add('selected', 'selected-start');
+            }
+        });
+    }
+    
+    function updateSelectedTimeDisplay() {
+        const displayText = document.getElementById('selected-time-text');
+        const startTimeInput = document.getElementById('start_time');
+        const endTimeInput = document.getElementById('end_time');
+        const startDatetimeInput = document.getElementById('start_datetime');
+        const endDatetimeInput = document.getElementById('end_datetime');
+        
+        if (selectedStartSlot && selectedEndSlot) {
+            const startTime = selectedStartSlot.slot.start;
+            const endTime = selectedEndSlot.slot.end;
+            const startDatetime = selectedStartSlot.slot.start_datetime;
+            const endDatetime = selectedEndSlot.slot.end_datetime;
+            
+            displayText.textContent = `${startTime} - ${endTime}`;
+            displayText.classList.remove('text-muted', 'text-warning');
+            displayText.classList.add('text-success', 'fw-bold');
+            
+            // Set hidden inputs for form submission - ensure values are set
+            startTimeInput.value = startTime;
+            endTimeInput.value = endTime;
+            startDatetimeInput.value = startDatetime;
+            endDatetimeInput.value = endDatetime;
+            
+            // Debug: log to console to verify values are set
+            console.log('Time selected:', {
+                start: startTime,
+                end: endTime,
+                startDatetime: startDatetime,
+                endDatetime: endDatetime
+            });
+        } else {
+            displayText.textContent = 'No time selected';
+            displayText.classList.remove('text-success', 'text-warning', 'fw-bold');
+            displayText.classList.add('text-muted');
+            
+            startTimeInput.value = '';
+            endTimeInput.value = '';
+            startDatetimeInput.value = '';
+            endDatetimeInput.value = '';
+        }
+    }
+    
+    // Validate form submission
+    document.getElementById('booking-form').addEventListener('submit', function(e) {
+        const startDatetime = document.getElementById('start_datetime').value;
+        const endDatetime = document.getElementById('end_datetime').value;
+        const startTime = document.getElementById('start_time').value;
+        const endTime = document.getElementById('end_time').value;
+        
+        // Check if time slots are selected (either via visual calendar or fallback)
+        if (!startDatetime || !endDatetime) {
+            e.preventDefault();
+            alert('Please select a time range by clicking on available time slots.');
+            return;
+        }
+        
+        // Validate that end time is after start time
+        const start = new Date(startDatetime);
+        const end = new Date(endDatetime);
+        
+        if (end <= start) {
+            e.preventDefault();
+            alert('End time must be after start time.');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}
+

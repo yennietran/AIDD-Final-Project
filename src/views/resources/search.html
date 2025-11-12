@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Search Resources - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Search Resources</h1>
+
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.search') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="q" class="form-control" placeholder="Keyword..." value="{{ search_query or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ date_filter or '' }}" id="search-date">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Time</label>
+                    <input type="time" name="time" class="form-control" value="{{ time_filter or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Min Capacity</label>
+                    <input type="number" name="min_capacity" class="form-control" min="1" value="{{ min_capacity or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Sort By</label>
+                    <select name="sort" class="form-select">
+                        <option value="recent" {% if sort_by == 'recent' %}selected{% endif %}>Recent</option>
+                        <option value="top_rated" {% if sort_by == 'top_rated' %}selected{% endif %}>Top Rated</option>
+                        <option value="most_booked" {% if sort_by == 'most_booked' %}selected{% endif %}>Most Booked</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3>Results ({{ resources|length }})</h3>
+        </div>
+        {% if date_filter and time_filter and resources|length == 0 %}
+        <div class="alert alert-info mt-2">
+            <i class="bi bi-info-circle"></i> 
+            No resources found available at <strong>{{ date_filter }} {{ time_filter }}</strong>. 
+            This might mean:
+            <ul class="mb-0 mt-2">
+                <li>All resources are already booked at this time</li>
+                <li>The time is outside the resource's availability hours</li>
+                <li>Try a different date/time or <a href="{{ url_for('main.search', q=search_query, category=category, min_capacity=min_capacity, sort=sort_by) }}" class="alert-link">remove the date/time filter</a> to see all resources</li>
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if resources %}
+    <div class="row g-4">
+        {% for item in resources %}
+        {% set resource = item.resource %}
+        <div class="col-md-4 col-sm-6">
+            <div class="card h-100 resource-card">
+                {% if item.images_parsed and item.images_parsed[0] %}
+                    <img src="{{ item.images_parsed[0] }}" class="card-img-top" alt="{{ resource.title }}" 
+                         style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                {% else %}
+                <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <span class="text-white">No Image</span>
+                </div>
+                {% endif %}
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ resource.title }}</h5>
+                    <p class="card-text text-muted small">
+                        {% if resource.location %}<i class="bi bi-geo-alt"></i> {{ resource.location }}<br>{% endif %}
+                        {% if resource.category %}<span class="badge bg-secondary">{{ resource.category }}</span>{% endif %}
+                        {% if resource.capacity %}<span class="badge bg-info">Capacity: {{ resource.capacity }}</span>{% endif %}
+                    </p>
+                    {% if date_filter and time_filter %}
+                    <div class="mb-2">
+                        <small class="text-success">
+                            <i class="bi bi-calendar-check"></i> Available on {{ date_filter }} at {{ time_filter }}
+                        </small>
+                    </div>
+                    {% endif %}
+                    <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                       class="btn btn-primary btn-sm mt-auto">View Details & Book</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <h4>No resources found</h4>
+        <p>Try adjusting your search criteria.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('search-date');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+    }
+});
+</script>
+{% endblock %}
+

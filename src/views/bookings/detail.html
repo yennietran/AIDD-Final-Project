@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Booking Details - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4>Booking Details</h4>
+                    <span class="badge bg-{% if booking.status == 'approved' %}success{% elif booking.status == 'pending' %}warning{% elif booking.status == 'rejected' %}danger{% elif booking.status == 'cancelled' %}secondary{% else %}info{% endif %} fs-6">
+                        {{ booking.status|title }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <h5>Resource</h5>
+                    {% if booking.resource %}
+                    <p>
+                        <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}">
+                            {{ booking.resource.title }}
+                        </a><br>
+                        {% if booking.resource.location %}
+                        <i class="bi bi-geo-alt"></i> {{ booking.resource.location }}
+                        {% endif %}
+                    </p>
+                    {% if booking.resource.owner and current_user.is_authenticated and booking.resource.owner_id != current_user.user_id %}
+                    <a href="{{ url_for('messages.conversation', user_id=booking.resource.owner_id) }}" 
+                       class="btn btn-outline-primary btn-sm mt-2">
+                        <i class="bi bi-envelope"></i> Message Owner
+                    </a>
+                    {% endif %}
+                    {% else %}
+                    <p>Resource #{{ booking.resource_id }}</p>
+                    {% endif %}
+
+                    <hr>
+
+                    <h5>Booking Time</h5>
+                    <p>
+                        <strong>Start:</strong> {{ booking.start_datetime.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                        <strong>End:</strong> {{ booking.end_datetime.strftime('%B %d, %Y at %I:%M %p') }}
+                    </p>
+
+                    <hr>
+
+                    {% if approval_notes %}
+                    <h5>Approval Information</h5>
+                    <div class="alert alert-success">
+                        <strong>Approved by:</strong> {{ approval_notes.approved_by }}<br>
+                        <strong>Approved on:</strong> {{ approval_notes.approved_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% if approval_notes.notes %}
+                        <hr class="my-2">
+                        <strong>Approval Notes:</strong><br>
+                        <p class="mb-0">{{ approval_notes.notes }}</p>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    {% endif %}
+
+                    <h5>Requester</h5>
+                    {% if booking.requester %}
+                    <p>{{ booking.requester.name }} ({{ booking.requester.email }})</p>
+                    {% else %}
+                    <p>User #{{ booking.requester_id }}</p>
+                    {% endif %}
+                    
+                    {% if current_user.is_authenticated and booking.requester and booking.requester_id != current_user.user_id %}
+                    <a href="{{ url_for('messages.conversation', user_id=booking.requester_id) }}" 
+                       class="btn btn-outline-primary btn-sm mt-2">
+                        <i class="bi bi-envelope"></i> Message Requester
+                    </a>
+                    {% endif %}
+
+                    <p class="text-muted small mt-3">
+                        Created: {{ booking.created_at.strftime('%B %d, %Y at %I:%M %p') }}<br>
+                        Last updated: {{ booking.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if booking.status == 'pending' %}
+                        {% if booking.resource and booking.resource.owner_id == current_user.user_id or current_user.role == 'admin' %}
+                        <form method="POST" action="{{ url_for('bookings.approve', booking_id=booking.booking_id) }}" class="mb-2">
+                            <div class="mb-2">
+                                <label for="approval_notes" class="form-label small">Approval Notes (Optional)</label>
+                                <textarea class="form-control form-control-sm" id="approval_notes" 
+                                          name="approval_notes" rows="3" 
+                                          placeholder="e.g., Verified prerequisite training completed"></textarea>
+                                <small class="form-text text-muted">Add notes about verification or approval rationale</small>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Approve Booking</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('bookings.reject', booking_id=booking.booking_id) }}">
+                            <div class="mb-2">
+                                <label for="rejection_notes" class="form-label small">Rejection Notes (Optional)</label>
+                                <textarea class="form-control form-control-sm" id="rejection_notes" 
+                                          name="rejection_notes" rows="3" 
+                                          placeholder="e.g., Prerequisite training not completed"></textarea>
+                                <small class="form-text text-muted">Add notes explaining the rejection reason</small>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100">Reject Booking</button>
+                        </form>
+                        {% endif %}
+                        {% if booking.requester_id == current_user.user_id %}
+                        <form method="POST" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" 
+                              onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                            <button type="submit" class="btn btn-outline-secondary w-100 mt-2">Cancel Booking</button>
+                        </form>
+                        {% endif %}
+                    {% elif booking.status == 'approved' and booking.requester_id == current_user.user_id %}
+                    <form method="POST" action="{{ url_for('bookings.cancel', booking_id=booking.booking_id) }}" 
+                          onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                        <button type="submit" class="btn btn-outline-secondary w-100">Cancel Booking</button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if booking.requester_id == current_user.user_id and booking.status in ['approved', 'completed'] and booking_has_ended %}
+                        <div class="mt-3">
+                            {% if existing_review %}
+                            <a href="{{ url_for('reviews.edit', review_id=existing_review.review_id) }}" 
+                               class="btn btn-warning w-100">
+                                <i class="bi bi-star"></i> Edit Your Review
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('reviews.create', resource_id=booking.resource_id) }}" 
+                               class="btn btn-warning w-100">
+                                <i class="bi bi-star"></i> Write a Review
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}" 
+                       class="btn btn-outline-primary w-100">View Resource</a>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary w-100 mt-2">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

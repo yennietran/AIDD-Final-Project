@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Reported Messages - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Reported Messages</h1>
+
+    <div class="card">
+        <div class="card-body">
+            {% if reported_messages %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Message ID</th>
+                            <th>Sender</th>
+                            <th>Receiver</th>
+                            <th>Content</th>
+                            <th>Date</th>
+                            <th>Reports</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for message, report_count in reported_messages %}
+                        <tr>
+                            <td>{{ message.message_id }}</td>
+                            <td>
+                                {% if message.sender %}
+                                {{ message.sender.name }} ({{ message.sender.email }})
+                                {% else %}
+                                User #{{ message.sender_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if message.receiver %}
+                                {{ message.receiver.name }} ({{ message.receiver.email }})
+                                {% else %}
+                                User #{{ message.receiver_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ message.content }}">
+                                    {{ message.content[:50] }}{% if message.content|length > 50 %}...{% endif %}
+                                </span>
+                            </td>
+                            <td>{{ message.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <span class="badge bg-danger">{{ report_count }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form method="POST" action="{{ url_for('admin.ignore_message_reports', message_id=message.message_id) }}" 
+                                          class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Ignore</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin.delete_message', message_id=message.message_id) }}" 
+                                          class="d-inline" 
+                                          onsubmit="return confirm('Are you sure you want to delete this message?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                    <a href="{{ url_for('messages.conversation', user_id=message.sender_id if message.sender_id != current_user.user_id else message.receiver_id, return_to='reported_messages') }}" 
+                                       class="btn btn-sm btn-outline-primary">View Context</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <p class="mb-0">No reported messages at this time.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

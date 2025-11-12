@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Resources - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Manage Resources</h1>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option>
+                        <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resources Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Owner</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resource in resources %}
+                        <tr>
+                            <td>{{ resource.resource_id }}</td>
+                            <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
+                            <td>
+                                {% if resource.owner %}{{ resource.owner.name }}{% else %}User #{{ resource.owner_id }}{% endif %}
+                                {% if resource.owner and current_user.is_authenticated and resource.owner_id != current_user.user_id %}
+                                <a href="{{ url_for('messages.conversation', user_id=resource.owner_id) }}" 
+                                   class="btn btn-sm btn-outline-info ms-2" title="Message owner">
+                                    <i class="bi bi-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>{{ resource.category or 'N/A' }}</td>
+                            <td><span class="badge bg-{% if resource.status == 'published' %}success{% elif resource.status == 'draft' %}warning{% else %}secondary{% endif %}">{{ resource.status }}</span></td>
+                            <td>
+                                <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

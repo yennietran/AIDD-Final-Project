@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Dashboard</h1>
+    <p class="lead">Welcome, {{ current_user.name }}!</p>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">My Resources</h5>
+                    <h2 class="text-primary">{{ current_user.resources|length }}</h2>
+                    <a href="{{ url_for('resources.index') }}?owner={{ current_user.user_id }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">My Bookings</h5>
+                    <h2 class="text-info">{{ current_user.bookings|length }}</h2>
+                    <a href="#bookings" class="btn btn-sm btn-outline-info">View All</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Messages</h5>
+                    <h2 class="text-success">
+                        {% if total_unread and total_unread > 0 %}
+                            <span class="badge bg-danger rounded-pill">{{ total_unread }}</span>
+                            <small class="text-muted d-block mt-1">unread</small>
+                        {% else %}
+                            <span class="text-muted">0</span>
+                            <small class="text-muted d-block mt-1">unread</small>
+                        {% endif %}
+                    </h2>
+                    <a href="{{ url_for('messages.index') }}" class="btn btn-sm btn-outline-success">View All</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">My Reviews</h5>
+                    <h2 class="text-warning">{{ current_user.reviews|length }}</h2>
+                    <a href="{{ url_for('reviews.my_reviews') }}" class="btn btn-sm btn-outline-warning">View All</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('resources.create') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Resource
+                </a>
+                <a href="{{ url_for('resources.index') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-search"></i> Browse Resources
+                </a>
+                <a href="{{ url_for('messages.index') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-envelope"></i> Messages
+                </a>
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-danger">
+                    <i class="bi bi-shield-check"></i> Admin Panel
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- My Resources -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>My Resources</h5>
+            <a href="{{ url_for('resources.create') }}" class="btn btn-sm btn-primary">Add New</a>
+        </div>
+        <div class="card-body">
+            {% if current_user.resources %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resource in current_user.resources[:5] %}
+                        <tr>
+                            <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
+                            <td>{{ resource.category or 'N/A' }}</td>
+                            <td><span class="badge bg-{% if resource.status == 'published' %}success{% elif resource.status == 'draft' %}warning{% else %}secondary{% endif %}">{{ resource.status }}</span></td>
+                            <td>
+                                <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{{ url_for('resources.index') }}?owner={{ current_user.user_id }}" class="btn btn-sm btn-outline-primary">View All Resources</a>
+            {% else %}
+            <p class="text-muted">You haven't created any resources yet.</p>
+            <a href="{{ url_for('resources.create') }}" class="btn btn-primary">Create Your First Resource</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- My Bookings -->
+    <div class="card mb-4" id="bookings">
+        <div class="card-header">
+            <h5>My Recent Bookings</h5>
+        </div>
+        <div class="card-body">
+            {% if current_user.bookings %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Resource</th>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in current_user.bookings[:5] %}
+                        <tr>
+                            <td>
+                                {% if booking.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}">{{ booking.resource.title }}</a>
+                                {% else %}
+                                Resource #{{ booking.resource_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ booking.start_datetime.strftime('%Y-%m-%d %H:%M') }} - 
+                                {{ booking.end_datetime.strftime('%H:%M') }}
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if booking.status == 'approved' %}success{% elif booking.status == 'pending' %}warning{% elif booking.status == 'rejected' %}danger{% else %}secondary{% endif %}">
+                                    {{ booking.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">You don't have any bookings yet.</p>
+            <a href="{{ url_for('resources.index') }}" class="btn btn-primary">Browse Resources</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- My Reviews -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>My Reviews</h5>
+            <a href="{{ url_for('reviews.my_reviews') }}" class="btn btn-sm btn-outline-warning">View All</a>
+        </div>
+        <div class="card-body">
+            {% if current_user.reviews %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Resource</th>
+                            <th>Rating</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for review in current_user.reviews[:5] %}
+                        <tr>
+                            <td>
+                                {% if review.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=review.resource_id) }}">{{ review.resource.title }}</a>
+                                {% else %}
+                                Resource #{{ review.resource_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% for i in range(5) %}
+                                <span class="text-{% if i < review.rating %}warning{% else %}muted{% endif %}">★</span>
+                                {% endfor %}
+                                <span class="text-muted ms-1">({{ review.rating }}/5)</span>
+                            </td>
+                            <td>
+                                {% if review.comment %}
+                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ review.comment }}">
+                                    {{ review.comment }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">No comment</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ review.timestamp.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <a href="{{ url_for('reviews.edit', review_id=review.review_id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">You haven't written any reviews yet.</p>
+            <p class="text-muted small">After booking and using a resource, you can leave a review to help others!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

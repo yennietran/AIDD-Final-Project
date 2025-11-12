@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}AI Summary Report - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>AI Summary Report</h1>
+        <div>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            <a href="{{ url_for('admin.summary') }}" class="btn btn-primary">Refresh</a>
+        </div>
+    </div>
+
+    <!-- LLM Status Alert -->
+    {% if llm_error %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> <strong>LLM Unavailable:</strong> {{ llm_error }}
+        <br><small>Displaying fallback summary without AI generation.</small>
+    </div>
+    {% elif llm_used %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> <strong>AI-Generated Summary</strong> using {{ llm_provider }} ({{ model }})
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> <strong>Fallback Summary</strong> (LLM not used)
+    </div>
+    {% endif %}
+
+    <!-- Summary Content -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Weekly System Summary</h5>
+            <small class="text-muted">Generated: {{ stats.generated_at }}</small>
+        </div>
+        <div class="card-body">
+            <div class="summary-content" style="white-space: pre-wrap; line-height: 1.8;">{{ summary }}</div>
+        </div>
+    </div>
+
+    <!-- Detailed Statistics -->
+    <div class="row">
+        <!-- System Overview -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">System Overview</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Total Users:</strong></td>
+                            <td>{{ stats.basic_stats.total_users }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Resources:</strong></td>
+                            <td>{{ stats.basic_stats.total_resources }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Bookings:</strong></td>
+                            <td>{{ stats.basic_stats.total_bookings }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pending Bookings:</strong></td>
+                            <td><span class="badge bg-warning">{{ stats.basic_stats.pending_bookings }}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Reviews:</strong></td>
+                            <td>{{ stats.basic_stats.total_reviews }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Average Rating:</strong></td>
+                            <td>
+                                <span class="text-warning">
+                                    {% for i in range(5) %}
+                                        {% if i < stats.basic_stats.average_rating|round|int %}
+                                        ★
+                                        {% else %}
+                                        ☆
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                {{ stats.basic_stats.average_rating }}/5.0
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Trends -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Booking Trends</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>This Week:</strong></td>
+                            <td>{{ stats.recent_bookings_count }} bookings</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Last Week:</strong></td>
+                            <td>{{ stats.last_week_bookings_count }} bookings</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trend:</strong></td>
+                            <td>
+                                <span class="badge bg-{% if stats.booking_trend == 'increased' %}success{% elif stats.booking_trend == 'decreased' %}danger{% else %}secondary{% endif %}">
+                                    {{ stats.booking_trend|upper }} ({{ stats.trend_percentage }}%)
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <h6 class="mt-3">Booking Status Breakdown:</h6>
+                    {% if stats.booking_status_counts %}
+                    <ul class="list-unstyled">
+                        {% for status, count in stats.booking_status_counts.items() %}
+                        <li>
+                            <span class="badge bg-secondary">{{ status|title }}</span>: {{ count }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted small">No booking data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Resources -->
+    <div class="row">
+        <!-- Most Popular -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top 5 Most Popular Resources</h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.popular_resources %}
+                    <ol>
+                        {% for resource in stats.popular_resources[:5] %}
+                        <li class="mb-2">
+                            <strong>{{ resource.title }}</strong><br>
+                            <small class="text-muted">
+                                {{ resource.booking_count }} bookings
+                                {% if resource.average_rating %}
+                                | {{ "%.1f"|format(resource.average_rating) }}/5.0 rating
+                                {% endif %}
+                            </small>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="text-muted">No booking data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Rated -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top 5 Highest Rated Resources</h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.top_rated_resources %}
+                    <ol>
+                        {% for resource in stats.top_rated_resources[:5] %}
+                        <li class="mb-2">
+                            <strong>{{ resource.title }}</strong><br>
+                            <small class="text-muted">
+                                <span class="text-warning">
+                                    {% for i in range(5) %}
+                                        {% if i < resource.average_rating|round|int %}
+                                        ★
+                                        {% else %}
+                                        ☆
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                {{ resource.average_rating }}/5.0 ({{ resource.total_reviews }} reviews)
+                            </small>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="text-muted">No reviews available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resources by Category -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Resources by Category</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for category, count in stats.category_counts.items()|sort(attribute='1', reverse=True) %}
+                <div class="col-md-3 mb-2">
+                    <span class="badge bg-primary">{{ category }}</span>: {{ count }} resources
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Configuration (for testing) -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">LLM Configuration</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin.summary') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">LLM Provider</label>
+                    <select name="provider" class="form-select">
+                        <option value="ollama" {% if llm_provider == 'ollama' %}selected{% endif %}>Ollama</option>
+                        <option value="lm_studio" {% if llm_provider == 'lm_studio' %}selected{% endif %}>LM Studio</option>
+                        <option value="openai" {% if llm_provider == 'openai' %}selected{% endif %}>OpenAI API</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Model</label>
+                    <input type="text" name="model" class="form-control" value="{{ model }}" placeholder="e.g., llama3.2">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Use LLM</label>
+                    <select name="use_llm" class="form-select">
+                        <option value="true" {% if use_llm or use_llm is none %}selected{% endif %}>Yes</option>
+                        <option value="false" {% if use_llm is not none and not use_llm %}selected{% endif %}>No (Fallback)</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Regenerate with Settings</button>
+                </div>
+            </form>
+            <div class="mt-3">
+                <small class="text-muted">
+                    <strong>Note:</strong> For Ollama, ensure it's running on <code>localhost:11434</code>.
+                    For LM Studio, ensure it's running on <code>localhost:1234</code>.
+                    For OpenAI, set the <code>OPENAI_API_KEY</code> environment variable.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

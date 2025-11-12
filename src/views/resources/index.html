@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Resources - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>All Resources</h1>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('resources.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Resource
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('resources.index') }}" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="q" class="form-control" placeholder="Search..." 
+                           value="{{ request.args.get('q', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        <option value="Study Rooms" {% if request.args.get('category') == 'Study Rooms' %}selected{% endif %}>Study Rooms</option>
+                        <option value="Equipment" {% if request.args.get('category') == 'Equipment' %}selected{% endif %}>Equipment</option>
+                        <option value="Labs" {% if request.args.get('category') == 'Labs' %}selected{% endif %}>Labs</option>
+                        <option value="Events" {% if request.args.get('category') == 'Events' %}selected{% endif %}>Events</option>
+                        <option value="Tutoring" {% if request.args.get('category') == 'Tutoring' %}selected{% endif %}>Tutoring</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="status" class="form-select">
+                        <option value="published">Published Only</option>
+                        {% if current_user.is_authenticated %}
+                        <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="archived" {% if request.args.get('status') == 'archived' %}selected{% endif %}>Archived</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resources Grid -->
+    {% if resources %}
+    <div class="row g-4">
+        {% for item in resources %}
+        {% set resource = item.resource %}
+        <div class="col-md-4 col-sm-6">
+            <div class="card h-100 resource-card">
+                {% if item.images_parsed and item.images_parsed[0] %}
+                    <img src="{{ item.images_parsed[0] }}" class="card-img-top" alt="{{ item.resource.title }}" 
+                         style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                {% else %}
+                <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <span class="text-white">No Image</span>
+                </div>
+                {% endif %}
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">{{ resource.title }}</h5>
+                        <span class="badge bg-{% if resource.status == 'published' %}success{% elif resource.status == 'draft' %}warning{% else %}secondary{% endif %}">
+                            {{ resource.status }}
+                        </span>
+                    </div>
+                    <p class="card-text text-muted small">
+                        {% if resource.location %}
+                        <i class="bi bi-geo-alt"></i> {{ resource.location }}<br>
+                        {% endif %}
+                        {% if resource.category %}
+                        <span class="badge bg-secondary">{{ resource.category }}</span>
+                        {% endif %}
+                        {% if resource.capacity %}
+                        <span class="badge bg-info">Capacity: {{ resource.capacity }}</span>
+                        {% endif %}
+                    </p>
+                    {% if resource.description %}
+                    <p class="card-text flex-grow-1">{{ resource.description[:150] }}{% if resource.description|length > 150 %}...{% endif %}</p>
+                    {% endif %}
+                    <div class="mt-auto">
+                        <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                           class="btn btn-primary btn-sm">View Details</a>
+                        {% if current_user.is_authenticated and (resource.owner_id == current_user.user_id or current_user.role == 'admin') %}
+                        <a href="{{ url_for('resources.edit', resource_id=resource.resource_id) }}" 
+                           class="btn btn-outline-secondary btn-sm">Edit</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <h4>No resources found</h4>
+        <p>{% if current_user.is_authenticated %}
+            <a href="{{ url_for('resources.create') }}" class="btn btn-primary">Create the first resource</a>
+            {% else %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Sign up</a> to add resources.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

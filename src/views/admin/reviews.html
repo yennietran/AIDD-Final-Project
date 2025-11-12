@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Moderate Reviews - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Moderate Reviews</h1>
+
+    <!-- Flagged Reviews Section -->
+    {% if flagged_reviews %}
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Flagged Reviews ({{ flagged_reviews|length }})</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Resource</th>
+                            <th>Reviewer</th>
+                            <th>Rating</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                            <th>Flags</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for review, flag_count in flagged_reviews %}
+                        <tr class="{% if review.is_hidden %}table-secondary{% endif %}">
+                            <td>{{ review.review_id }}</td>
+                            <td>
+                                {% if review.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=review.resource_id) }}">{{ review.resource.title }}</a>
+                                {% else %}
+                                Resource #{{ review.resource_id }}
+                                {% endif %}
+                            </td>
+                            <td>{% if review.reviewer %}{{ review.reviewer.name }}{% else %}User #{{ review.reviewer_id }}{% endif %}</td>
+                            <td>
+                                <div class="text-warning">
+                                    {% for i in range(5) %}
+                                        {% if i < review.rating %}
+                                        ★
+                                        {% else %}
+                                        ☆
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>{{ review.comment[:50] if review.comment else 'N/A' }}{% if review.comment and review.comment|length > 50 %}...{% endif %}</td>
+                            <td>{{ review.timestamp.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge bg-danger">{{ flag_count }}</span>
+                            </td>
+                            <td>
+                                {% if review.is_hidden %}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {% else %}
+                                <span class="badge bg-success">Visible</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form method="POST" action="{{ url_for('admin.ignore_review_flags', review_id=review.review_id) }}" 
+                                          class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Ignore</button>
+                                    </form>
+                                    {% if review.is_hidden %}
+                                    <form method="POST" action="{{ url_for('admin.unhide_review', review_id=review.review_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Unhide</button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('admin.hide_review', review_id=review.review_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Hide</button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('admin.delete_review', review_id=review.review_id) }}" 
+                                          class="d-inline" 
+                                          onsubmit="return confirm('Are you sure you want to delete this review?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Reviews Section -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">All Reviews</h5>
+        </div>
+        <div class="card-body">
+            {% if other_reviews %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Resource</th>
+                            <th>Reviewer</th>
+                            <th>Rating</th>
+                            <th>Comment</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for review, flag_count in other_reviews %}
+                        <tr class="{% if review.is_hidden %}table-secondary{% endif %}">
+                            <td>{{ review.review_id }}</td>
+                            <td>
+                                {% if review.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=review.resource_id) }}">{{ review.resource.title }}</a>
+                                {% else %}
+                                Resource #{{ review.resource_id }}
+                                {% endif %}
+                            </td>
+                            <td>{% if review.reviewer %}{{ review.reviewer.name }}{% else %}User #{{ review.reviewer_id }}{% endif %}</td>
+                            <td>
+                                <div class="text-warning">
+                                    {% for i in range(5) %}
+                                        {% if i < review.rating %}
+                                        ★
+                                        {% else %}
+                                        ☆
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>{{ review.comment[:50] if review.comment else 'N/A' }}{% if review.comment and review.comment|length > 50 %}...{% endif %}</td>
+                            <td>{{ review.timestamp.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if review.is_hidden %}
+                                <span class="badge bg-secondary">Hidden</span>
+                                {% else %}
+                                <span class="badge bg-success">Visible</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% if review.is_hidden %}
+                                    <form method="POST" action="{{ url_for('admin.unhide_review', review_id=review.review_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Unhide</button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('admin.hide_review', review_id=review.review_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Hide</button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('admin.delete_review', review_id=review.review_id) }}" 
+                                          class="d-inline" 
+                                          onsubmit="return confirm('Are you sure you want to delete this review?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <p class="mb-0">No reviews to display.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

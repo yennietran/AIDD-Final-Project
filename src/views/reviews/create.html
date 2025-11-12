@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Write Review - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Write a Review</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Resource:</strong> {{ resource.title }}
+                    </div>
+
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Rating *</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="rating" id="rating1" value="1" required>
+                                <label class="btn btn-outline-warning" for="rating1">1</label>
+                                
+                                <input type="radio" class="btn-check" name="rating" id="rating2" value="2" required>
+                                <label class="btn btn-outline-warning" for="rating2">2</label>
+                                
+                                <input type="radio" class="btn-check" name="rating" id="rating3" value="3" required>
+                                <label class="btn btn-outline-warning" for="rating3">3</label>
+                                
+                                <input type="radio" class="btn-check" name="rating" id="rating4" value="4" required>
+                                <label class="btn btn-outline-warning" for="rating4">4</label>
+                                
+                                <input type="radio" class="btn-check" name="rating" id="rating5" value="5" required>
+                                <label class="btn btn-outline-warning" for="rating5">5</label>
+                            </div>
+                            <small class="form-text text-muted">Select a rating from 1 (worst) to 5 (best)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comment" class="form-label">Comment</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="4" 
+                                      placeholder="Share your experience with this resource..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}" 
+                               class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

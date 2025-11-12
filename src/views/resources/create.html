@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Create Resource - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Create New Resource</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category">
+                                    <option value="">Select category</option>
+                                    <option value="Study Rooms">Study Rooms</option>
+                                    <option value="Equipment">Equipment</option>
+                                    <option value="Labs">Labs</option>
+                                    <option value="Events">Events</option>
+                                    <option value="Tutoring">Tutoring</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="capacity" class="form-label">Capacity</label>
+                                <input type="number" class="form-control" id="capacity" name="capacity" min="1">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   placeholder="e.g., Library 2F, Room 201">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="image_files" class="form-label">Upload Images</label>
+                            <input type="file" class="form-control" id="image_files" name="image_files" 
+                                   accept="image/*" multiple>
+                            <small class="form-text text-muted">You can upload multiple images (max 5MB each). Supported formats: PNG, JPG, JPEG, GIF, WEBP</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="images" class="form-label">Or Enter Image URLs (comma-separated)</label>
+                            <input type="text" class="form-control" id="images" name="images" 
+                                   placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg">
+                            <small class="form-text text-muted">Alternatively, enter image URLs separated by commas</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Availability Schedule</label>
+                            <small class="form-text text-muted d-block mb-2">Set the hours when this resource is available each day</small>
+                            <div class="border rounded p-3">
+                                {% set days = [
+                                    ('monday', 'Monday'),
+                                    ('tuesday', 'Tuesday'),
+                                    ('wednesday', 'Wednesday'),
+                                    ('thursday', 'Thursday'),
+                                    ('friday', 'Friday'),
+                                    ('saturday', 'Saturday'),
+                                    ('sunday', 'Sunday')
+                                ] %}
+                                {% for day_key, day_name in days %}
+                                <div class="row mb-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input availability-day-toggle" type="checkbox" 
+                                                   id="availability_{{ day_key }}_enabled" 
+                                                   name="availability_{{ day_key }}_enabled"
+                                                   data-day="{{ day_key }}">
+                                            <label class="form-check-label" for="availability_{{ day_key }}_enabled">
+                                                {{ day_name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="availability_{{ day_key }}_start" class="form-label small">Start Time</label>
+                                        <input type="time" class="form-control form-control-sm availability-time" 
+                                               id="availability_{{ day_key }}_start" 
+                                               name="availability_{{ day_key }}_start"
+                                               data-day="{{ day_key }}" disabled>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="availability_{{ day_key }}_end" class="form-label small">End Time</label>
+                                        <input type="time" class="form-control form-control-sm availability-time" 
+                                               id="availability_{{ day_key }}_end" 
+                                               name="availability_{{ day_key }}_end"
+                                               data-day="{{ day_key }}" disabled>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary copy-hours-btn" 
+                                                data-day="{{ day_key }}" title="Copy to all days" disabled>
+                                            <small>Copy</small>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {% if current_user.role != 'student' %}
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="published" selected>Published</option>
+                                <option value="draft">Draft</option>
+                                <option value="archived">Archived</option>
+                            </select>
+                            <small class="form-text text-muted">Staff and admins can publish resources immediately.</small>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>Note:</strong> As a student, your resource will be submitted for admin approval. It will be visible on the site once approved.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="requires_approval" 
+                                       name="requires_approval" value="1">
+                                <label class="form-check-label" for="requires_approval">
+                                    <strong>Requires Approval for Bookings</strong>
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    When checked, all booking requests for this resource will require staff/admin approval before being confirmed.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('resources.index') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Resource</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enable/disable time inputs based on checkbox
+    document.querySelectorAll('.availability-day-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const day = this.dataset.day;
+            const timeInputs = document.querySelectorAll(`.availability-time[data-day="${day}"]`);
+            const copyBtn = document.querySelector(`.copy-hours-btn[data-day="${day}"]`);
+            
+            if (this.checked) {
+                timeInputs.forEach(input => input.disabled = false);
+                if (copyBtn) copyBtn.disabled = false;
+            } else {
+                timeInputs.forEach(input => {
+                    input.disabled = true;
+                    input.value = '';
+                });
+                if (copyBtn) copyBtn.disabled = true;
+            }
+        });
+    });
+    
+    // Copy hours to all days
+    document.querySelectorAll('.copy-hours-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sourceDay = this.dataset.day;
+            const startTime = document.getElementById(`availability_${sourceDay}_start`).value;
+            const endTime = document.getElementById(`availability_${sourceDay}_end`).value;
+            
+            if (!startTime || !endTime) {
+                alert('Please set start and end times for this day first.');
+                return;
+            }
+            
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            days.forEach(day => {
+                if (day !== sourceDay) {
+                    const checkbox = document.getElementById(`availability_${day}_enabled`);
+                    const startInput = document.getElementById(`availability_${day}_start`);
+                    const endInput = document.getElementById(`availability_${day}_end`);
+                    const copyBtn = document.querySelector(`.copy-hours-btn[data-day="${day}"]`);
+                    
+                    checkbox.checked = true;
+                    startInput.value = startTime;
+                    endInput.value = endTime;
+                    startInput.disabled = false;
+                    endInput.disabled = false;
+                    if (copyBtn) copyBtn.disabled = false;
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
+

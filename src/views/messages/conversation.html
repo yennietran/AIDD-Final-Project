@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation with {{ other_user.name }} - Campus Resource Hub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Conversation with {{ other_user.name }}</h5>
+                    {% if return_to == 'reported_messages' %}
+                    <a href="{{ url_for('admin.reported_messages') }}" class="btn btn-sm btn-outline-secondary">Back to Reported Messages</a>
+                    {% else %}
+                    <a href="{{ url_for('messages.index') }}" class="btn btn-sm btn-outline-secondary">Back</a>
+                    {% endif %}
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="mb-3 {% if message.sender_id == current_user.user_id %}text-end{% endif %}">
+                            <div class="d-inline-block p-3 rounded {% if message.sender_id == current_user.user_id %}bg-primary text-white{% else %}bg-light{% endif %}" 
+                                 style="max-width: 70%; position: relative;">
+                                <p class="mb-1" style="white-space: pre-wrap;">{{ message.content }}</p>
+                                <small class="{% if message.sender_id == current_user.user_id %}text-white-50{% else %}text-muted{% endif %}">
+                                    {{ message.timestamp.strftime('%b %d, %Y at %I:%M %p') }}
+                                </small>
+                                {% if current_user.is_authenticated %}
+                                <form method="POST" action="{{ url_for('messages.report_message', message_id=message.message_id) }}" 
+                                      class="d-inline ms-2">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                            style="padding: 0.125rem 0.25rem; font-size: 0.75rem;"
+                                            onclick="return confirm('Report this message as inappropriate?');"
+                                            title="Report message">
+                                        <i class="bi bi-flag"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <p class="text-muted text-center">No messages yet. Start the conversation!</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <form method="POST">
+                        <div class="input-group">
+                            <input type="text" name="content" class="form-control" placeholder="Type your message..." required>
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

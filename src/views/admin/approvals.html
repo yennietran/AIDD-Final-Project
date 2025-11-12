@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Approvals Queue - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Approvals Queue</h1>
+
+    <!-- Pending Resources -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Pending Resources ({{ pending_resources|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_resources %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Owner</th>
+                            <th>Category</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resource in pending_resources %}
+                        <tr>
+                            <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
+                            <td>
+                                {% if resource.owner %}{{ resource.owner.name }}{% else %}User #{{ resource.owner_id }}{% endif %}
+                                {% if resource.owner and current_user.is_authenticated and resource.owner_id != current_user.user_id %}
+                                <a href="{{ url_for('messages.conversation', user_id=resource.owner_id) }}" 
+                                   class="btn btn-sm btn-outline-info ms-2" title="Message owner">
+                                    <i class="bi bi-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>{{ resource.category or 'N/A' }}</td>
+                            <td>{{ resource.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin.approve_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No pending resources</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pending Bookings -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Pending Bookings ({{ pending_bookings|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_bookings %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Resource</th>
+                            <th>Requester</th>
+                            <th>Date & Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in pending_bookings %}
+                        <tr>
+                            <td>
+                                {% if booking.resource %}
+                                <a href="{{ url_for('resources.detail', resource_id=booking.resource_id) }}">{{ booking.resource.title }}</a>
+                                {% else %}
+                                Resource #{{ booking.resource_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if booking.requester %}{{ booking.requester.name }}{% else %}User #{{ booking.requester_id }}{% endif %}
+                                {% if booking.requester and current_user.is_authenticated and booking.requester_id != current_user.user_id %}
+                                <a href="{{ url_for('messages.conversation', user_id=booking.requester_id) }}" 
+                                   class="btn btn-sm btn-outline-info ms-2" title="Message requester">
+                                    <i class="bi bi-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>{{ booking.start_datetime.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <form method="POST" action="{{ url_for('bookings.approve', booking_id=booking.booking_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Approve this booking request?');">
+                                            Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('bookings.reject', booking_id=booking.booking_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Reject this booking request?');">
+                                            Reject
+                                        </button>
+                                    </form>
+                                    <a href="{{ url_for('bookings.detail', booking_id=booking.booking_id) }}" class="btn btn-sm btn-outline-primary">Review</a>
+                                </div>
+                                {% if booking.resource and booking.resource.owner and current_user.is_authenticated and booking.resource.owner_id != current_user.user_id %}
+                                <a href="{{ url_for('messages.conversation', user_id=booking.resource.owner_id) }}" 
+                                   class="btn btn-sm btn-outline-info ms-1" title="Message resource owner">
+                                    <i class="bi bi-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No pending bookings</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
