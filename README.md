@@ -58,7 +58,7 @@ The frontend design was developed using a structured design process:
 2. **Implementation**: The Figma wireframes served as the design foundation for building the HTML/Jinja2 templates
 3. **Styling**: Bootstrap 5 was used to implement the visual design, ensuring responsive layouts and consistent UI components
 
-Wireframe artifacts are stored in `docs/context/DT/Campus Resource Hub Wireframe/` as part of the Design Thinking context pack.
+Wireframe artifacts (PNG images) are stored in `docs/context/DT/` as part of the Design Thinking context pack.
 
 ## Architecture
 

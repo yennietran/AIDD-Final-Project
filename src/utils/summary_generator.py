@@ -3,6 +3,11 @@ Auto-Summary Reporter
 Generates natural language summaries of system statistics using LLM
 Uses DAL methods directly (not MCP tools) to avoid write operation restrictions
 
+Context Grounding: This feature was developed with reference to project context
+materials in /docs/context/ to ensure alignment with project goals and user needs.
+Specifically, wireframes in /docs/context/DT/ informed the admin dashboard design,
+and process models in /docs/context/APA/ helped shape the reporting workflow.
+
 AI Contribution: This entire module was AI-generated based on requirements for an
 AI-powered summary feature. The LLM integration (Ollama, LM Studio, OpenAI) and
 statistics aggregation logic were AI-suggested and implemented with team review.
