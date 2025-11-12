@@ -63,7 +63,7 @@ def register():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
-        role = request.form.get('role', 'student')
+        role = 'student'  # Force all new registrations to be students
         department = request.form.get('department', '').strip() or None
         
         # Validation
@@ -80,8 +80,6 @@ def register():
             errors.append('Password must be at least 8 characters.')
         if password != confirm_password:
             errors.append('Passwords do not match.')
-        if role not in ['student', 'staff', 'admin']:
-            errors.append('Invalid role selected.')
         
         # Check if email already exists
         if email and UserDAL.get_by_email(email):
@@ -108,4 +106,38 @@ def register():
             db.session.rollback()
     
     return render_template('auth/register.html')
+
+
+@auth_bp.route('/request-role-change', methods=['POST'])
+@login_required
+def request_role_change():
+    """Request a role change"""
+    from src.data_access.role_change_request_dal import RoleChangeRequestDAL
+    
+    # Only students can request role changes
+    if current_user.role != 'student':
+        flash('Only students can request role changes.', 'danger')
+        return redirect(url_for('dashboard.index'))
+    
+    requested_role = request.form.get('requested_role', '').strip()
+    reason = request.form.get('reason', '').strip() or None
+    
+    if not requested_role or requested_role not in ['staff', 'admin']:
+        flash('Please select a valid role (Staff or Admin).', 'danger')
+        return redirect(url_for('dashboard.index'))
+    
+    try:
+        RoleChangeRequestDAL.create(
+            user_id=current_user.user_id,
+            requested_role=requested_role,
+            reason=reason
+        )
+        flash(f'Your request to become a {requested_role.title()} has been submitted. An admin will review it soon.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error submitting request: {str(e)}', 'danger')
+        db.session.rollback()
+    
+    return redirect(url_for('dashboard.index'))
 

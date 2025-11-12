@@ -32,10 +32,11 @@
                         <div class="mb-3">
                             <label for="role" class="form-label">Role</label>
                             <select class="form-select" id="role" name="role" required>
-                                <option value="student">Student</option>
-                                <option value="staff">Staff</option>
-                                <option value="admin">Admin</option>
+                                <option value="student" selected>Student</option>
                             </select>
+                            <div class="alert alert-info mt-2">
+                                <i class="bi bi-info-circle"></i> <strong>Note:</strong> All new accounts default to Student role. If you need Staff or Admin access, please create your account and then request a role change from your dashboard.
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="department" class="form-label">Department (Optional)</label>

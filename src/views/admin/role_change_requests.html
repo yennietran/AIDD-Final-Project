@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Role Change Requests - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Role Change Requests</h1>
+    
+    <!-- Status Filter -->
+    <div class="mb-3">
+        <a href="{{ url_for('admin.role_change_requests', status='pending') }}" 
+           class="btn btn-sm {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+            Pending
+        </a>
+        <a href="{{ url_for('admin.role_change_requests', status='approved') }}" 
+           class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline-success{% endif %}">
+            Approved
+        </a>
+        <a href="{{ url_for('admin.role_change_requests', status='denied') }}" 
+           class="btn btn-sm {% if status_filter == 'denied' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+            Denied
+        </a>
+        <a href="{{ url_for('admin.role_change_requests') }}" 
+           class="btn btn-sm btn-outline-secondary">
+            All
+        </a>
+    </div>
+
+    {% if requests %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Current Role</th>
+                            <th>Requested Role</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                            {% if status_filter != 'pending' %}
+                            <th>Processed By</th>
+                            <th>Processed At</th>
+                            {% endif %}
+                            {% if status_filter == 'pending' %}
+                            <th>Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr>
+                            <td>
+                                {% if req.user %}
+                                <strong>{{ req.user.name }}</strong><br>
+                                <small class="text-muted">{{ req.user.email }}</small>
+                                {% else %}
+                                User #{{ req.user_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.user %}
+                                <span class="badge bg-secondary">{{ req.user.role|title }}</span>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ req.requested_role|title }}</span>
+                            </td>
+                            <td>
+                                {% if req.reason %}
+                                {{ req.reason[:100] }}{% if req.reason|length > 100 %}...{% endif %}
+                                {% else %}
+                                <em class="text-muted">No reason provided</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% elif req.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif req.status == 'denied' %}
+                                <span class="badge bg-danger">Denied</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                            {% if status_filter != 'pending' %}
+                            <td>
+                                {% if req.admin %}
+                                {{ req.admin.name }}
+                                {% elif req.admin_id %}
+                                Admin #{{ req.admin_id }}
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.processed_at %}
+                                <small>{{ req.processed_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if status_filter == 'pending' %}
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <form method="POST" action="{{ url_for('admin.approve_role_change', request_id=req.request_id) }}" class="d-inline">
+                                        <div class="mb-2">
+                                            <textarea name="admin_notes" class="form-control form-control-sm" rows="2" 
+                                                      placeholder="Optional notes..."></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Approve this role change request?')">
+                                            <i class="bi bi-check-circle"></i> Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin.deny_role_change', request_id=req.request_id) }}" class="d-inline">
+                                        <div class="mb-2">
+                                            <textarea name="admin_notes" class="form-control form-control-sm" rows="2" 
+                                                      placeholder="Optional reason for denial..."></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-danger"
+                                                onclick="return confirm('Deny this role change request?')">
+                                            <i class="bi bi-x-circle"></i> Deny
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% if req.admin_notes and status_filter != 'pending' %}
+                        <tr>
+                            <td colspan="{% if status_filter == 'pending' %}7{% else %}9{% endif %}" class="bg-light">
+                                <small><strong>Admin Notes:</strong> {{ req.admin_notes }}</small>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No role change requests found{% if status_filter != 'pending' %} with status "{{ status_filter }}"{% endif %}.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

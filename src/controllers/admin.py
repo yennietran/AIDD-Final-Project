@@ -44,12 +44,15 @@ def log_admin_action(action: str, target_table: str, details: str = None):
 @admin_required
 def dashboard():
     """Admin dashboard"""
+    from src.data_access.role_change_request_dal import RoleChangeRequestDAL
+    
     # Get statistics
     total_users = len(UserDAL.get_all())
     total_resources = len(ResourceDAL.get_all())
     total_bookings = len(BookingDAL.get_all())
     pending_bookings = len(BookingDAL.get_all(status='pending'))
     pending_resources = ResourceDAL.get_all(status='draft')
+    pending_role_requests_count = len(RoleChangeRequestDAL.get_all(status='pending'))
     
     # Get recent activity
     recent_bookings = BookingDAL.get_all(limit=10)
@@ -61,6 +64,7 @@ def dashboard():
                          total_bookings=total_bookings,
                          pending_bookings=pending_bookings,
                          pending_resources=pending_resources,
+                         pending_role_requests_count=pending_role_requests_count,
                          recent_bookings=recent_bookings,
                          recent_resources=recent_resources)
 
@@ -444,4 +448,71 @@ def unsuspend_user(user_id):
         db.session.rollback()
     
     return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/admin/role-change-requests')
+@login_required
+@admin_required
+def role_change_requests():
+    """View all role change requests"""
+    from src.data_access.role_change_request_dal import RoleChangeRequestDAL
+    
+    status_filter = request.args.get('status', 'pending')
+    all_requests = RoleChangeRequestDAL.get_all(status=status_filter if status_filter in ['pending', 'approved', 'denied'] else None)
+    
+    return render_template('admin/role_change_requests.html', 
+                         requests=all_requests, 
+                         status_filter=status_filter)
+
+
+@admin_bp.route('/admin/role-change-requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_role_change(request_id):
+    """Approve a role change request"""
+    from src.data_access.role_change_request_dal import RoleChangeRequestDAL
+    
+    admin_notes = request.form.get('admin_notes', '').strip() or None
+    
+    try:
+        request_obj = RoleChangeRequestDAL.approve(request_id, current_user.user_id, admin_notes)
+        if request_obj:
+            log_admin_action('approve_role_change', 'role_change_requests', 
+                           f'Approved role change request {request_id} for user {request_obj.user_id} to {request_obj.requested_role}')
+            flash(f'Role change request approved. User is now a {request_obj.requested_role}.', 'success')
+        else:
+            flash('Role change request not found.', 'danger')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error approving request: {str(e)}', 'danger')
+        db.session.rollback()
+    
+    return redirect(url_for('admin.role_change_requests'))
+
+
+@admin_bp.route('/admin/role-change-requests/<int:request_id>/deny', methods=['POST'])
+@login_required
+@admin_required
+def deny_role_change(request_id):
+    """Deny a role change request"""
+    from src.data_access.role_change_request_dal import RoleChangeRequestDAL
+    
+    admin_notes = request.form.get('admin_notes', '').strip() or None
+    
+    try:
+        request_obj = RoleChangeRequestDAL.deny(request_id, current_user.user_id, admin_notes)
+        if request_obj:
+            log_admin_action('deny_role_change', 'role_change_requests', 
+                           f'Denied role change request {request_id} for user {request_obj.user_id}')
+            flash('Role change request denied.', 'success')
+        else:
+            flash('Role change request not found.', 'danger')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error denying request: {str(e)}', 'danger')
+        db.session.rollback()
+    
+    return redirect(url_for('admin.role_change_requests'))
 

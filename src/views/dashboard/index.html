@@ -54,6 +54,46 @@
         </div>
     </div>
 
+    <!-- Role Change Request Section -->
+    {% if current_user.role == 'student' %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Request Role Change</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_role_request %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> <strong>Pending Request:</strong> You have a pending request to change your role to <strong>{{ pending_role_request.requested_role|title }}</strong>. 
+                An admin will review your request soon.
+                {% if pending_role_request.reason %}
+                <br><br><strong>Your reason:</strong> {{ pending_role_request.reason }}
+                {% endif %}
+            </div>
+            {% else %}
+            <p>Need Staff or Admin access? Request a role change below.</p>
+            <form method="POST" action="{{ url_for('auth.request_role_change') }}">
+                <div class="mb-3">
+                    <label for="requested_role" class="form-label">Requested Role</label>
+                    <select class="form-select" id="requested_role" name="requested_role" required>
+                        <option value="">Select a role...</option>
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="reason" class="form-label">Reason (Optional)</label>
+                    <textarea class="form-control" id="reason" name="reason" rows="3" 
+                              placeholder="Please explain why you need this role change..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-person-check"></i> Submit Request
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Quick Actions -->
     <div class="card mb-4">
         <div class="card-header">

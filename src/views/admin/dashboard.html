@@ -60,6 +60,12 @@
                         <a href="{{ url_for('admin.bookings') }}" class="btn btn-success">Manage Bookings</a>
                         <a href="{{ url_for('admin.reviews') }}" class="btn btn-secondary">Moderate Reviews</a>
                         <a href="{{ url_for('admin.reported_messages') }}" class="btn btn-danger">Reported Messages</a>
+                        <a href="{{ url_for('admin.role_change_requests') }}" class="btn btn-warning">
+                            <i class="bi bi-person-gear"></i> Role Change Requests
+                            {% if pending_role_requests_count and pending_role_requests_count > 0 %}
+                            <span class="badge bg-danger">{{ pending_role_requests_count }}</span>
+                            {% endif %}
+                        </a>
                         <a href="{{ url_for('admin.summary') }}" class="btn btn-info">AI Summary Report</a>
                     </div>
                 </div>

@@ -361,3 +361,39 @@ class MessageReport(db.Model):
     def __repr__(self):
         return f'<MessageReport {self.report_id} - Message {self.message_id} - User {self.user_id}>'
 
+
+class RoleChangeRequest(db.Model):
+    """Role change request model for users requesting role upgrades"""
+    __tablename__ = 'role_change_requests'
+    
+    request_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    requested_role = db.Column(db.String(20), nullable=False)  # 'staff' or 'admin'
+    reason = db.Column(db.Text, nullable=True)  # Optional reason for the request
+    status = db.Column(db.String(20), nullable=False, default='pending')  # 'pending', 'approved', 'denied'
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True)  # Admin who processed it
+    admin_notes = db.Column(db.Text, nullable=True)  # Admin's notes when approving/denying
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    processed_at = db.Column(db.DateTime, nullable=True)  # When admin processed it
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='role_change_requests')
+    admin = db.relationship('User', foreign_keys=[admin_id])
+    
+    def __repr__(self):
+        return f'<RoleChangeRequest {self.request_id} - User {self.user_id} - Role {self.requested_role}>'
+    
+    def to_dict(self):
+        """Convert role change request object to dictionary"""
+        return {
+            'request_id': self.request_id,
+            'user_id': self.user_id,
+            'requested_role': self.requested_role,
+            'reason': self.reason,
+            'status': self.status,
+            'admin_id': self.admin_id,
+            'admin_notes': self.admin_notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'processed_at': self.processed_at.isoformat() if self.processed_at else None
+        }
+
