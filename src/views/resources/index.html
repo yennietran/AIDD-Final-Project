@@ -17,11 +17,13 @@
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ url_for('resources.index') }}" class="row g-3">
-                <div class="col-md-4">
-                    <input type="text" name="q" class="form-control" placeholder="Search..." 
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="q" class="form-control" placeholder="Keyword..." 
                            value="{{ request.args.get('q', '') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
                     <select name="category" class="form-select">
                         <option value="">All Categories</option>
                         <option value="Study Rooms" {% if request.args.get('category') == 'Study Rooms' %}selected{% endif %}>Study Rooms</option>
@@ -31,16 +33,38 @@
                         <option value="Tutoring" {% if request.args.get('category') == 'Tutoring' %}selected{% endif %}>Tutoring</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <select name="status" class="form-select">
-                        <option value="published">Published Only</option>
-                        {% if current_user.is_authenticated %}
-                        <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>Draft</option>
-                        <option value="archived" {% if request.args.get('status') == 'archived' %}selected{% endif %}>Archived</option>
-                        {% endif %}
-                    </select>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ request.args.get('date', '') }}" id="filter-date">
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">Time</label>
+                    <input type="time" name="time" class="form-control" value="{{ request.args.get('time', '') }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Min Capacity</label>
+                    <input type="number" name="min_capacity" class="form-control" min="1" value="{{ request.args.get('min_capacity', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Sort By</label>
+                    <select name="sort" class="form-select">
+                        <option value="recent" {% if request.args.get('sort', 'recent') == 'recent' %}selected{% endif %}>Recent</option>
+                        <option value="top_rated" {% if request.args.get('sort') == 'top_rated' %}selected{% endif %}>Top Rated</option>
+                        <option value="most_booked" {% if request.args.get('sort') == 'most_booked' %}selected{% endif %}>Most Booked</option>
+                    </select>
+                </div>
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="published" {% if request.args.get('status', 'published') == 'published' %}selected{% endif %}>Published</option>
+                        <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="archived" {% if request.args.get('status') == 'archived' %}selected{% endif %}>Archived</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
                     <button type="submit" class="btn btn-primary w-100">Filter</button>
                 </div>
             </form>

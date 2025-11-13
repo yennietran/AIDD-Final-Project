@@ -86,13 +86,32 @@ resources_bp = Blueprint('resources', __name__)
 
 @resources_bp.route('/resources')
 def index():
-    """List all published resources"""
+    """List all published resources with filtering"""
+    from datetime import datetime, timedelta
+    from src.data_access.booking_dal import BookingDAL
+    from src.data_access.review_dal import ReviewDAL
+    
     category = request.args.get('category', '').strip() or None
     status = request.args.get('status', 'published')
     search_query = request.args.get('q', '').strip()
     owner_id = request.args.get('owner')
     owner_id = int(owner_id) if owner_id and owner_id.isdigit() else None
     limit = int(request.args.get('limit', 50))
+    
+    # Get new filter parameters
+    min_capacity = request.args.get('min_capacity')
+    min_capacity = int(min_capacity) if min_capacity and min_capacity.isdigit() else None
+    sort_by = request.args.get('sort', 'recent')  # recent, most_booked, top_rated
+    
+    # Get date/time filters
+    date_filter = request.args.get('date', '').strip()
+    time_filter = request.args.get('time', '').strip()
+    filter_datetime = None
+    if date_filter and time_filter:
+        try:
+            filter_datetime = datetime.strptime(f'{date_filter} {time_filter}', '%Y-%m-%d %H:%M')
+        except ValueError:
+            pass
     
     # Only show published to non-authenticated users
     try:
@@ -108,6 +127,54 @@ def index():
         resources = ResourceDAL.search(search_term=search_query, category=category, status=status, limit=limit)
     else:
         resources = ResourceDAL.get_all(category=category, status=status, owner_id=owner_id, limit=limit)
+    
+    # Filter by capacity if provided
+    if min_capacity:
+        resources = [r for r in resources if r.capacity and r.capacity >= min_capacity]
+    
+    # Filter by date/time availability if provided
+    if filter_datetime:
+        # Check availability for each resource at the specified date/time
+        # Use a 1-hour slot for the check
+        end_datetime = filter_datetime + timedelta(hours=1)
+        available_resources = []
+        for r in resources:
+            try:
+                # Check if resource is available at the requested time
+                is_available = BookingDAL.check_availability(r.resource_id, filter_datetime, end_datetime)
+                if is_available:
+                    available_resources.append(r)
+            except Exception as e:
+                # If check fails due to error, include resource anyway
+                # This handles cases where availability rules might be malformed
+                import traceback
+                print(f"Availability check error for resource {r.resource_id} ({r.title}): {e}")
+                print(traceback.format_exc())
+                # Include resource if there's an error (fail open)
+                available_resources.append(r)
+        # Only filter if we found some available resources, otherwise show all
+        if available_resources:
+            resources = available_resources
+    
+    # Sort results
+    if sort_by == 'most_booked':
+        # Sort by booking count
+        resources_with_counts = []
+        for r in resources:
+            bookings = BookingDAL.get_all(resource_id=r.resource_id, status=None)
+            booking_count = len([b for b in bookings if b.status in ['approved', 'completed']])
+            resources_with_counts.append((r, booking_count))
+        resources_with_counts.sort(key=lambda x: x[1], reverse=True)
+        resources = [r[0] for r in resources_with_counts]
+    elif sort_by == 'top_rated':
+        # Sort by average rating
+        resources_with_ratings = []
+        for r in resources:
+            stats = ReviewDAL.get_resource_rating_stats(r.resource_id)
+            resources_with_ratings.append((r, stats.get('average_rating', 0)))
+        resources_with_ratings.sort(key=lambda x: x[1], reverse=True)
+        resources = [r[0] for r in resources_with_ratings]
+    # 'recent' is default (already sorted by created_at desc in DAL)
     
     # Parse images for each resource
     resources_with_images = []
@@ -315,6 +382,20 @@ def create():
         capacity = request.form.get('capacity')
         capacity = int(capacity) if capacity and capacity.isdigit() else None
         
+        # Validate required fields
+        if not title:
+            flash('Title is required.', 'danger')
+            return render_template('resources/create.html')
+        if not category:
+            flash('Category is required.', 'danger')
+            return render_template('resources/create.html')
+        if not location:
+            flash('Location is required.', 'danger')
+            return render_template('resources/create.html')
+        if not capacity or capacity < 1:
+            flash('Capacity is required and must be at least 1.', 'danger')
+            return render_template('resources/create.html')
+        
         # Handle file uploads
         uploaded_files = request.files.getlist('image_files')
         images_list = []
@@ -358,6 +439,11 @@ def create():
             end_time = request.form.get(f'availability_{day}_end', '').strip()
             if enabled and start_time and end_time:
                 availability_rules[day] = f"{start_time}-{end_time}"
+        
+        # Validate that at least one day has availability schedule
+        if not availability_rules:
+            flash('At least one day must be selected with valid start and end times in the availability schedule.', 'danger')
+            return render_template('resources/create.html')
         
         # Convert to JSON string if there are any rules, otherwise None
         # Handle requires_approval metadata
@@ -404,6 +490,29 @@ def create():
                 flash('Resource created successfully! It is pending admin approval and will be visible once approved.', 'success')
             else:
                 flash('Resource created successfully!', 'success')
+                # Send automated message to creator when resource is published
+                try:
+                    from src.data_access.message_dal import MessageDAL
+                    # System sends message to the creator
+                    # Use admin user as sender (or system user if available)
+                    # For now, we'll use the current user as sender (self-message)
+                    # In a real system, you might have a system user ID
+                    message_content = (
+                        f"✅ Your resource '{resource.title}' has been successfully published!\n\n"
+                        f"📋 Resource Details:\n"
+                        f"• Category: {resource.category or 'N/A'}\n"
+                        f"• Location: {resource.location or 'N/A'}\n"
+                        f"• Capacity: {resource.capacity or 'N/A'}\n\n"
+                        f"Your resource is now visible to all users and available for booking."
+                    )
+                    MessageDAL.create(
+                        sender_id=current_user.user_id,  # Self-message from creator
+                        receiver_id=current_user.user_id,
+                        content=message_content
+                    )
+                except Exception as msg_error:
+                    # Don't fail resource creation if messaging fails
+                    print(f"Error sending resource publication message: {msg_error}")
             
             return redirect(url_for('resources.detail', resource_id=resource.resource_id))
         except Exception as e:

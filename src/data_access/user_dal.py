@@ -84,7 +84,7 @@ class UserDAL:
     @staticmethod
     def delete(user_id: int) -> bool:
         """
-        Delete a user
+        Delete a user and handle all related records
         
         Args:
             user_id: User ID to delete
@@ -92,10 +92,60 @@ class UserDAL:
         Returns:
             True if deleted, False if not found
         """
+        from src.models.models import Booking, Review, Message, Waitlist, ReviewFlag, MessageReport, RoleChangeRequest, AdminLog, Resource
+        
         user = UserDAL.get_by_id(user_id)
         if not user:
             return False
         
+        # Check if user owns any resources - prevent deletion if they do
+        # Admin should transfer ownership or delete resources first
+        owned_resources = Resource.query.filter_by(owner_id=user_id).all()
+        if owned_resources:
+            raise ValueError(f"Cannot delete user: User owns {len(owned_resources)} resource(s). Please transfer ownership or delete resources first.")
+        
+        # Delete all bookings where user is requester
+        bookings = Booking.query.filter_by(requester_id=user_id).all()
+        for booking in bookings:
+            db.session.delete(booking)
+        
+        # Delete all reviews written by user
+        reviews = Review.query.filter_by(reviewer_id=user_id).all()
+        for review in reviews:
+            db.session.delete(review)
+        
+        # Delete all messages sent or received by user
+        sent_messages = Message.query.filter_by(sender_id=user_id).all()
+        received_messages = Message.query.filter_by(receiver_id=user_id).all()
+        for message in sent_messages + received_messages:
+            db.session.delete(message)
+        
+        # Delete all waitlist entries
+        waitlist_entries = Waitlist.query.filter_by(user_id=user_id).all()
+        for entry in waitlist_entries:
+            db.session.delete(entry)
+        
+        # Delete all review flags by user
+        review_flags = ReviewFlag.query.filter_by(user_id=user_id).all()
+        for flag in review_flags:
+            db.session.delete(flag)
+        
+        # Delete all message reports by user
+        message_reports = MessageReport.query.filter_by(user_id=user_id).all()
+        for report in message_reports:
+            db.session.delete(report)
+        
+        # Delete all role change requests by user
+        role_requests = RoleChangeRequest.query.filter_by(user_id=user_id).all()
+        for request in role_requests:
+            db.session.delete(request)
+        
+        # Delete admin logs if user is admin
+        admin_logs = AdminLog.query.filter_by(admin_id=user_id).all()
+        for log in admin_logs:
+            db.session.delete(log)
+        
+        # Now delete the user
         db.session.delete(user)
         db.session.commit()
         return True

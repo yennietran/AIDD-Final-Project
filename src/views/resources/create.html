@@ -13,7 +13,7 @@
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
-                            <label for="title" class="form-label">Title *</label>
+                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="title" name="title" required>
                         </div>
 
@@ -24,8 +24,8 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="category" class="form-label">Category</label>
-                                <select class="form-select" id="category" name="category">
+                                <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category" name="category" required>
                                     <option value="">Select category</option>
                                     <option value="Study Rooms">Study Rooms</option>
                                     <option value="Equipment">Equipment</option>
@@ -35,15 +35,15 @@
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="capacity" class="form-label">Capacity</label>
-                                <input type="number" class="form-control" id="capacity" name="capacity" min="1">
+                                <label for="capacity" class="form-label">Capacity <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="capacity" name="capacity" min="1" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="location" class="form-label">Location</label>
+                            <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="location" name="location" 
-                                   placeholder="e.g., Library 2F, Room 201">
+                                   placeholder="e.g., Library 2F, Room 201" required>
                         </div>
 
                         <div class="mb-3">
@@ -61,8 +61,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Availability Schedule</label>
-                            <small class="form-text text-muted d-block mb-2">Set the hours when this resource is available each day</small>
+                            <label class="form-label">Availability Schedule <span class="text-danger">*</span></label>
+                            <small class="form-text text-muted d-block mb-2">Set the hours when this resource is available each day (at least one day must be selected)</small>
                             <div class="border rounded p-3">
                                 {% set days = [
                                     ('monday', 'Monday'),
@@ -202,6 +202,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    });
+    
+    // Validate availability schedule before form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        let hasValidSchedule = false;
+        
+        for (const day of days) {
+            const checkbox = document.getElementById(`availability_${day}_enabled`);
+            const startTime = document.getElementById(`availability_${day}_start`).value;
+            const endTime = document.getElementById(`availability_${day}_end`).value;
+            
+            if (checkbox && checkbox.checked && startTime && endTime) {
+                // Validate that end time is after start time
+                if (startTime >= endTime) {
+                    e.preventDefault();
+                    alert(`For ${day.charAt(0).toUpperCase() + day.slice(1)}, end time must be after start time.`);
+                    return false;
+                }
+                hasValidSchedule = true;
+            }
+        }
+        
+        if (!hasValidSchedule) {
+            e.preventDefault();
+            alert('Please select at least one day and set valid start and end times in the availability schedule.');
+            return false;
+        }
     });
 });
 </script>

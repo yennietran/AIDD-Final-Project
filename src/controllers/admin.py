@@ -178,6 +178,9 @@ def delete_user(user_id):
         UserDAL.delete(user_id)
         log_admin_action('delete_user', 'users', f'Deleted user {user_id}')
         flash('User deleted successfully.', 'success')
+    except ValueError as e:
+        # Handle validation errors (e.g., user owns resources)
+        flash(str(e), 'danger')
     except Exception as e:
         flash(f'Error deleting user: {str(e)}', 'danger')
     
@@ -225,9 +228,42 @@ def approvals():
 def approve_resource(resource_id):
     """Approve a resource"""
     try:
+        # Get resource before updating to access owner info
+        resource = ResourceDAL.get_by_id(resource_id)
+        if not resource:
+            flash('Resource not found.', 'danger')
+            return redirect(url_for('admin.approvals'))
+        
+        # Update resource status
         ResourceDAL.update(resource_id, status='published')
         log_admin_action('approve_resource', 'resources', f'Approved resource {resource_id}')
         flash('Resource approved and published.', 'success')
+        
+        # Send automated message to resource creator (student) confirming approval
+        try:
+            from src.data_access.message_dal import MessageDAL
+            # Get the resource owner
+            resource = ResourceDAL.get_by_id(resource_id)  # Refresh to get updated status
+            if resource and resource.owner_id:
+                message_content = (
+                    f"✅ Great news! Your resource '{resource.title}' has been approved and published!\n\n"
+                    f"📋 Resource Details:\n"
+                    f"• Category: {resource.category or 'N/A'}\n"
+                    f"• Location: {resource.location or 'N/A'}\n"
+                    f"• Capacity: {resource.capacity or 'N/A'}\n\n"
+                    f"Your resource is now visible to all users and available for booking. "
+                    f"Thank you for contributing to the Campus Resource Hub!"
+                )
+                # Send message from admin to resource owner
+                MessageDAL.create(
+                    sender_id=current_user.user_id,  # Admin who approved
+                    receiver_id=resource.owner_id,   # Student who created the resource
+                    content=message_content
+                )
+        except Exception as msg_error:
+            # Don't fail approval if messaging fails
+            print(f"Error sending resource approval message: {msg_error}")
+            
     except Exception as e:
         flash(f'Error approving resource: {str(e)}', 'danger')
     
