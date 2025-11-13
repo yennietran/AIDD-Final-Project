@@ -9,6 +9,37 @@ Maintain a collection of prompts that generate particularly useful, accurate, or
 
 ## Golden Prompts
 
+### Resource Filtering and Automated Messaging - November 2024
+**Prompt:**
+```
+when you click on the resources page, i also want to be able to filter by date, time, sort by, min capaciity. 
+for filtering by status, make sure only the admin can have this option. for the required things when creating resource, add a * next to them to indicate it's required
+notify creator their resource is successfully published by sending them a message in addition to the notification on the screen we have at the moment. so for example, when a staff pubishhes a resource, then it sends them a message saying it was successful. and for when an admin approves a resource made by a student, send the student a message of confirmation too
+```
+
+**Context:**
+This prompt was effective because it:
+1. Clearly specified multiple related features in one request (filtering, UI improvements, messaging)
+2. Explicitly stated access control requirements (admin-only status filter)
+3. Provided specific examples of when messages should be sent
+4. Combined UI improvements with backend functionality
+
+**Response Summary:**
+- Added comprehensive filtering to resources page (date, time, min capacity, sort by)
+- Implemented date/time availability checking using existing BookingDAL methods
+- Made status filter admin-only with role check
+- Updated all required fields to use red asterisks for better UX
+- Implemented automated messaging for:
+  - Staff/admin resource publishing (self-confirmation message)
+  - Admin approval of student resources (admin-to-student message)
+- Messages include resource details and confirmation text
+- Error handling ensures resource operations don't fail if messaging fails
+
+**Key Learning:**
+Grouping related features in one prompt allows AI to understand the full context and implement a cohesive solution. The explicit examples helped clarify the messaging requirements.
+
+---
+
 ### Content Moderation System - 2024
 **Prompt:**
 ```

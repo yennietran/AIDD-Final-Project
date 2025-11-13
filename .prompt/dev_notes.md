@@ -22,6 +22,44 @@ Track AI-assisted development sessions, decisions made, and outcomes to maintain
 
 ## Log Entries
 
+### 2024 - Resource Management Enhancements & Automated Messaging - November 2024
+- **Prompt/Request:**
+  - Add date, time, min capacity, and sort filters to resources page
+  - Make status filter admin-only
+  - Add red asterisks (*) to required fields in resource creation form
+  - Add automated messaging when resources are published or approved
+  - Fix user deletion to handle related records properly
+- **AI Response/Outcome:**
+  - **Resource Filtering:**
+    - Added date, time, min capacity, and sort by filters to resources index page
+    - Implemented date/time availability checking using BookingDAL.check_availability()
+    - Added sorting by most booked (booking count) and top rated (average rating)
+    - Status filter now only visible to admins (changed from all authenticated users)
+  - **Required Field Indicators:**
+    - Updated all required fields (Title, Category, Capacity, Location, Availability Schedule) to use red asterisks (`<span class="text-danger">*</span>`)
+    - Maintains existing HTML5 `required` attributes and server-side validation
+  - **Automated Messaging:**
+    - When staff/admin publishes a resource: sends confirmation message to creator
+    - When admin approves student's resource: sends approval message from admin to student
+    - Messages include resource details (title, category, location, capacity)
+    - Uses MessageDAL.create() with proper error handling (doesn't fail resource creation if messaging fails)
+  - **User Deletion Improvements:**
+    - Updated UserDAL.delete() to handle all related records before deletion:
+      - Deletes bookings where user is requester
+      - Deletes reviews written by user
+      - Deletes messages sent/received by user
+      - Deletes waitlist entries, review flags, message reports, role change requests
+      - Deletes admin logs if user is admin
+    - Added validation to prevent deletion if user owns resources (with clear error message)
+    - Updated admin controller to handle ValueError exceptions separately
+- **Notes:**
+  - All changes maintain backward compatibility
+  - Error handling ensures resource creation/approval doesn't fail if messaging fails
+  - User deletion now properly handles foreign key constraints
+  - Filtering logic matches the search page implementation for consistency
+
+---
+
 ### 2024 - Initial Setup - AI First Folder Structure
 - **Prompt/Request:** 
   - Create AI First Folder Structure as specified in project requirements
