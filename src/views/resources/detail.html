@@ -4,6 +4,13 @@
 
 {% block content %}
 <div class="container mt-4">
+    {% if return_to == 'approvals' %}
+    <div class="mb-3">
+        <a href="{{ url_for('admin.approvals') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Approvals Queue
+        </a>
+    </div>
+    {% endif %}
     {% if resource.status == 'draft' %}
     <div class="alert alert-warning">
         <i class="bi bi-exclamation-triangle"></i> <strong>Pending Approval:</strong> This resource is currently pending admin approval and is not visible to other users. It will appear on the site once an admin approves it.

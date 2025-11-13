@@ -137,7 +137,10 @@ def detail(resource_id):
         is_authenticated = False
         user_id = None
     
-    if resource.status != 'published' and (not is_authenticated or resource.owner_id != user_id):
+    # Allow admins to view any resource (including drafts)
+    is_admin = is_authenticated and current_user.role == 'admin'
+    
+    if resource.status != 'published' and (not is_authenticated or (resource.owner_id != user_id and not is_admin)):
         flash('Resource not found.', 'danger')
         return redirect(url_for('resources.index'))
     
@@ -282,6 +285,9 @@ def detail(resource_id):
     # Get review stats for display
     review_stats = ReviewDAL.get_resource_rating_stats(resource.resource_id)
     
+    # Check if user came from approvals page
+    return_to = request.args.get('return_to', '')
+    
     return render_template('resources/detail.html', 
                          resource=resource, 
                          bookings=active_bookings,
@@ -293,7 +299,8 @@ def detail(resource_id):
                          availability_summary=availability_summary,
                          preview_reviews=preview_reviews,
                          total_reviews_count=total_reviews_count,
-                         review_stats=review_stats)
+                         review_stats=review_stats,
+                         return_to=return_to)
 
 
 @resources_bp.route('/resources/create', methods=['GET', 'POST'])

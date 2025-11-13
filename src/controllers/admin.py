@@ -234,6 +234,21 @@ def approve_resource(resource_id):
     return redirect(url_for('admin.approvals'))
 
 
+@admin_bp.route('/admin/resources/<int:resource_id>/reject', methods=['POST'])
+@login_required
+@admin_required
+def reject_resource(resource_id):
+    """Reject a resource (archive it)"""
+    try:
+        ResourceDAL.update(resource_id, status='archived')
+        log_admin_action('reject_resource', 'resources', f'Rejected resource {resource_id}')
+        flash('Resource rejected and archived.', 'success')
+    except Exception as e:
+        flash(f'Error rejecting resource: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.approvals'))
+
+
 @admin_bp.route('/admin/reviews')
 @login_required
 @admin_required

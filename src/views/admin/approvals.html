@@ -27,7 +27,7 @@
                     <tbody>
                         {% for resource in pending_resources %}
                         <tr>
-                            <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a></td>
+                            <td><a href="{{ url_for('resources.detail', resource_id=resource.resource_id, return_to='approvals') }}">{{ resource.title }}</a></td>
                             <td>
                                 {% if resource.owner %}{{ resource.owner.name }}{% else %}User #{{ resource.owner_id }}{% endif %}
                                 {% if resource.owner and current_user.is_authenticated and resource.owner_id != current_user.user_id %}
@@ -40,9 +40,16 @@
                             <td>{{ resource.category or 'N/A' }}</td>
                             <td>{{ resource.created_at.strftime('%Y-%m-%d') }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('admin.approve_resource', resource_id=resource.resource_id) }}" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                </form>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form method="POST" action="{{ url_for('admin.approve_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success" 
+                                                onclick="return confirm('Approve this resource?');">Approve</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin.reject_resource', resource_id=resource.resource_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Reject this resource? It will be archived.');">Reject</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
