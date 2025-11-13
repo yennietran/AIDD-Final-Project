@@ -98,16 +98,23 @@ class BookingDAL:
             availability_rules = None
             if resource.availability_rules:
                 try:
-                    availability_rules = json.loads(resource.availability_rules)
-                    # Ignore metadata key when checking availability
+                    # Handle both string and dict formats
+                    if isinstance(resource.availability_rules, str):
+                        availability_rules = json.loads(resource.availability_rules)
+                    else:
+                        availability_rules = resource.availability_rules
+                    
+                    # Ensure it's a dict and ignore metadata key when checking availability
                     if isinstance(availability_rules, dict):
                         availability_rules = {k: v for k, v in availability_rules.items() if k != '_metadata'}
-                except (json.JSONDecodeError, ValueError, AttributeError):
+                    else:
+                        availability_rules = None
+                except (json.JSONDecodeError, ValueError, AttributeError, TypeError):
                     # If parsing fails, treat as no rules (will check conflicts only)
                     availability_rules = None
             
             # If resource has availability rules defined, we MUST check them
-            if availability_rules and len(availability_rules) > 0:
+            if availability_rules and isinstance(availability_rules, dict) and len(availability_rules) > 0:
                 day_name = start_datetime.strftime('%A').lower()
                 day_availability = availability_rules.get(day_name)
                 
