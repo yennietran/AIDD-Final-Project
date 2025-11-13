@@ -107,9 +107,18 @@ def index():
     date_filter = request.args.get('date', '').strip()
     time_filter = request.args.get('time', '').strip()
     filter_datetime = None
+    date_only = False
     if date_filter and time_filter:
         try:
             filter_datetime = datetime.strptime(f'{date_filter} {time_filter}', '%Y-%m-%d %H:%M')
+        except ValueError:
+            pass
+    elif date_filter:
+        # If only date is provided, we'll use each resource's earliest available time for that day
+        try:
+            # Parse the date to get the day name
+            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            date_only = True
         except ValueError:
             pass
     
@@ -133,28 +142,58 @@ def index():
         resources = [r for r in resources if r.capacity and r.capacity >= min_capacity]
     
     # Filter by date/time availability if provided
-    if filter_datetime:
-        # Check availability for each resource at the specified date/time
-        # Use a 1-hour slot for the check
-        end_datetime = filter_datetime + timedelta(hours=1)
+    if filter_datetime or date_only:
         available_resources = []
         for r in resources:
             try:
-                # Check if resource is available at the requested time
-                is_available = BookingDAL.check_availability(r.resource_id, filter_datetime, end_datetime)
+                # If only date provided, get the earliest available time for this resource on that day
+                if date_only:
+                    # Get the day name (e.g., "monday", "tuesday")
+                    day_name = filter_date.strftime('%A').lower()
+                    
+                    # Parse resource's availability rules
+                    import json
+                    earliest_time = None
+                    if r.availability_rules:
+                        try:
+                            availability_rules = json.loads(r.availability_rules) if isinstance(r.availability_rules, str) else r.availability_rules
+                            if isinstance(availability_rules, dict):
+                                availability_rules = {k: v for k, v in availability_rules.items() if k != '_metadata'}
+                            
+                            # Check if this day has availability rules
+                            day_availability = availability_rules.get(day_name)
+                            if day_availability and '-' in day_availability:
+                                # Extract the start time (e.g., "07:00" from "07:00-12:00")
+                                start_str = day_availability.split('-')[0].strip()
+                                start_hour, start_min = map(int, start_str.split(':'))
+                                earliest_time = datetime.combine(filter_date, datetime.min.time().replace(hour=start_hour, minute=start_min))
+                        except (json.JSONDecodeError, ValueError, AttributeError, KeyError):
+                            pass
+                    
+                    # If no rules for this day, resource is not available
+                    if earliest_time is None:
+                        continue  # Skip this resource
+                    
+                    # Use the earliest time for this resource
+                    resource_filter_datetime = earliest_time
+                else:
+                    # Use the provided datetime
+                    resource_filter_datetime = filter_datetime
+                
+                # Check availability for a 1-hour slot starting at the filter time
+                end_datetime = resource_filter_datetime + timedelta(hours=1)
+                is_available = BookingDAL.check_availability(r.resource_id, resource_filter_datetime, end_datetime)
                 if is_available:
                     available_resources.append(r)
             except Exception as e:
-                # If check fails due to error, include resource anyway
-                # This handles cases where availability rules might be malformed
+                # If check fails due to error, exclude resource (fail closed)
+                # This ensures resources with malformed availability rules don't show up incorrectly
                 import traceback
                 print(f"Availability check error for resource {r.resource_id} ({r.title}): {e}")
                 print(traceback.format_exc())
-                # Include resource if there's an error (fail open)
-                available_resources.append(r)
-        # Only filter if we found some available resources, otherwise show all
-        if available_resources:
-            resources = available_resources
+                # Don't include resource if there's an error - be strict about filtering
+        # Always filter to available resources only (even if empty)
+        resources = available_resources
     
     # Sort results
     if sort_by == 'most_booked':

@@ -9,6 +9,34 @@ Maintain a collection of prompts that generate particularly useful, accurate, or
 
 ## Golden Prompts
 
+### Date/Time Filter Accuracy Fix - November 2024
+**Prompt:**
+```
+the filter function is not working. some resources that are only avaliable on wedneday for example is showing up when you sort to a day that does not fall on wednes day
+
+if they provide only date and no time, set default to the earliest time possible that day
+```
+
+**Context:**
+This prompt was effective because it:
+1. Clearly identified the bug (resources showing up on wrong days)
+2. Provided a specific example (Wednesday-only resource showing on other days)
+3. Requested a specific enhancement (earliest time when only date provided)
+4. Combined bug fix with feature improvement
+
+**Response Summary:**
+- Fixed `check_availability` method to correctly exclude resources not available on selected day
+- Changed filter logic from "fail-open" to "fail-closed" (strict filtering)
+- Implemented resource-specific earliest time extraction when only date is provided
+- Each resource uses its own earliest available time from its rules
+- Resources without rules for the selected day are automatically excluded
+- Applied fixes to both resources index and search pages
+
+**Key Learning:**
+When fixing filtering bugs, it's important to be strict (fail-closed) rather than permissive (fail-open) to avoid false positives. Resource-specific defaults (earliest time per resource) provide better UX than a global default.
+
+---
+
 ### Resource Filtering and Automated Messaging - November 2024
 **Prompt:**
 ```

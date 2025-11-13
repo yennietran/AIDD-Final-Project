@@ -93,44 +93,47 @@ class BookingDAL:
         
         # First check if time is within resource availability rules
         resource = ResourceDAL.get_by_id(resource_id)
-        if resource and resource.availability_rules:
-            try:
-                availability_rules = json.loads(resource.availability_rules)
-                # Ignore metadata key when checking availability
-                if isinstance(availability_rules, dict):
-                    availability_rules = {k: v for k, v in availability_rules.items() if k != '_metadata'}
+        if resource:
+            # Parse availability rules if they exist
+            availability_rules = None
+            if resource.availability_rules:
+                try:
+                    availability_rules = json.loads(resource.availability_rules)
+                    # Ignore metadata key when checking availability
+                    if isinstance(availability_rules, dict):
+                        availability_rules = {k: v for k, v in availability_rules.items() if k != '_metadata'}
+                except (json.JSONDecodeError, ValueError, AttributeError):
+                    # If parsing fails, treat as no rules (will check conflicts only)
+                    availability_rules = None
+            
+            # If resource has availability rules defined, we MUST check them
+            if availability_rules and len(availability_rules) > 0:
+                day_name = start_datetime.strftime('%A').lower()
+                day_availability = availability_rules.get(day_name)
                 
-                # If resource has any availability rules defined, we need to check them
-                if availability_rules and len(availability_rules) > 0:
-                    day_name = start_datetime.strftime('%A').lower()
-                    day_availability = availability_rules.get(day_name)
-                    
-                    # If the day has no explicit rules but resource has rules for other days,
-                    # this day is NOT available
-                    if day_availability is None:
-                        return False
-                    
-                    # Day has rules - check if time is within window
-                    if day_availability:
-                        # Parse time range (e.g., "9:00-17:00" or "17:00-19:00")
-                        if '-' in day_availability:
-                            start_str, end_str = day_availability.split('-')
-                            start_hour, start_min = map(int, start_str.split(':'))
-                            end_hour, end_min = map(int, end_str.split(':'))
-                            
-                            # Check if requested time is within availability window
-                            slot_start_time = start_datetime.time()
-                            slot_end_time = end_datetime.time()
-                            available_start = datetime.min.time().replace(hour=start_hour, minute=start_min)
-                            available_end = datetime.min.time().replace(hour=end_hour, minute=end_min)
-                            
-                            # Check if slot is outside availability hours
-                            if slot_start_time < available_start or slot_end_time > available_end:
-                                return False
-                # If no availability rules at all, allow booking (resource is always available)
-            except (json.JSONDecodeError, ValueError, AttributeError):
-                # If parsing fails, continue with conflict check only (allow booking)
-                pass
+                # If the day has no explicit rules but resource has rules for other days,
+                # this day is NOT available - return False immediately
+                if day_availability is None:
+                    return False
+                
+                # Day has rules - check if time is within window
+                if day_availability:
+                    # Parse time range (e.g., "9:00-17:00" or "17:00-19:00")
+                    if '-' in day_availability:
+                        start_str, end_str = day_availability.split('-')
+                        start_hour, start_min = map(int, start_str.split(':'))
+                        end_hour, end_min = map(int, end_str.split(':'))
+                        
+                        # Check if requested time is within availability window
+                        slot_start_time = start_datetime.time()
+                        slot_end_time = end_datetime.time()
+                        available_start = datetime.min.time().replace(hour=start_hour, minute=start_min)
+                        available_end = datetime.min.time().replace(hour=end_hour, minute=end_min)
+                        
+                        # Check if slot is outside availability hours
+                        if slot_start_time < available_start or slot_end_time > available_end:
+                            return False
+            # If no availability rules at all, resource is always available (only check conflicts)
         
         # Check for booking conflicts
         conflicts = Booking.query.filter(

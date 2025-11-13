@@ -22,6 +22,33 @@ Track AI-assisted development sessions, decisions made, and outcomes to maintain
 
 ## Log Entries
 
+### 2024 - Date/Time Filter Accuracy Fix - November 2024
+- **Prompt/Request:**
+  - Fix date/time filter to accurately exclude resources that are not available on the selected day
+  - Resources only available on specific days (e.g., Friday) were showing up when filtering for other days (e.g., Wednesday)
+  - When only date is provided (no time), use the earliest available time for each resource on that day
+- **AI Response/Outcome:**
+  - **Fixed `check_availability` method in `BookingDAL`:**
+    - Refactored availability rule parsing to be more robust
+    - Ensured that if a resource has availability rules but the requested day is not in those rules, it returns `False` immediately
+    - Improved error handling to exclude resources with malformed rules (fail-closed approach)
+  - **Updated filter logic in `resources.py` and `main.py`:**
+    - Changed from "fail-open" to "fail-closed" approach - resources with errors are excluded
+    - Removed fallback logic that showed all resources when no matches found
+    - Always filter to available resources only, even if the result is empty
+  - **Implemented date-only filtering with resource-specific earliest times:**
+    - When only date is provided (no time), parse the date to determine day of week
+    - For each resource, check its availability rules for that day
+    - Extract the earliest start time from the rules (e.g., "07:00" from "07:00-12:00")
+    - Use that resource-specific earliest time to check availability
+    - Resources without rules for that day are automatically excluded
+  - **Applied fixes to both resources index page and search page for consistency**
+- **Notes:**
+  - The filter now correctly respects resource availability rules
+  - Each resource uses its own earliest available time when only date is provided
+  - Resources are strictly filtered - no false positives for unavailable days
+  - Error handling ensures malformed availability rules don't cause incorrect filtering
+
 ### 2024 - Resource Management Enhancements & Automated Messaging - November 2024
 - **Prompt/Request:**
   - Add date, time, min capacity, and sort filters to resources page
