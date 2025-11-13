@@ -123,7 +123,7 @@ class MessageDAL:
     @staticmethod
     def delete(message_id: int) -> bool:
         """
-        Delete a message
+        Delete a message and handle all related records
         
         Args:
             message_id: Message ID to delete
@@ -131,10 +131,18 @@ class MessageDAL:
         Returns:
             True if deleted, False if not found
         """
+        from src.models.models import MessageReport
+        
         message = MessageDAL.get_by_id(message_id)
         if not message:
             return False
         
+        # Delete all message reports for this message first
+        message_reports = MessageReport.query.filter_by(message_id=message_id).all()
+        for report in message_reports:
+            db.session.delete(report)
+        
+        # Now delete the message
         db.session.delete(message)
         db.session.commit()
         return True

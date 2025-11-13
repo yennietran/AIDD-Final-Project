@@ -160,7 +160,7 @@ class ResourceDAL:
     @staticmethod
     def delete(resource_id: int) -> bool:
         """
-        Delete a resource and all associated bookings and reviews
+        Delete a resource and all associated bookings, reviews, and uploaded images
         
         Args:
             resource_id: Resource ID to delete
@@ -168,11 +168,51 @@ class ResourceDAL:
         Returns:
             True if deleted, False if not found
         """
+        import os
+        import json
+        from pathlib import Path
         from src.models.models import Booking, Review
         
         resource = ResourceDAL.get_by_id(resource_id)
         if not resource:
             return False
+        
+        # Delete uploaded image files before deleting the resource
+        if resource.images:
+            try:
+                # Parse images (could be JSON string or comma-separated)
+                images_list = []
+                if isinstance(resource.images, str):
+                    try:
+                        images_list = json.loads(resource.images)
+                        if not isinstance(images_list, list):
+                            images_list = [images_list]
+                    except (json.JSONDecodeError, TypeError):
+                        # If not JSON, treat as comma-separated
+                        images_list = [img.strip() for img in resource.images.split(',') if img.strip()]
+                elif isinstance(resource.images, list):
+                    images_list = resource.images
+                
+                # Delete local files only (not external URLs)
+                uploads_dir = Path('src/static/uploads')
+                for image_path in images_list:
+                    if isinstance(image_path, str):
+                        # Check if it's a local file path (starts with /static/uploads/)
+                        if image_path.startswith('/static/uploads/') or image_path.startswith('static/uploads/'):
+                            # Extract filename
+                            filename = image_path.split('/')[-1]
+                            file_path = uploads_dir / filename
+                            
+                            # Delete file if it exists
+                            if file_path.exists() and file_path.is_file():
+                                try:
+                                    os.remove(str(file_path))
+                                except OSError as e:
+                                    # Log error but don't fail deletion if file can't be removed
+                                    print(f"Error deleting image file {file_path}: {e}")
+            except Exception as e:
+                # Don't fail resource deletion if image deletion fails
+                print(f"Error processing images for deletion: {e}")
         
         # Delete all associated bookings first
         bookings = Booking.query.filter_by(resource_id=resource_id).all()

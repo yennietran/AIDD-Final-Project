@@ -29,6 +29,8 @@ Track AI-assisted development sessions, decisions made, and outcomes to maintain
   - Add red asterisks (*) to required fields in resource creation form
   - Add automated messaging when resources are published or approved
   - Fix user deletion to handle related records properly
+  - Fix message deletion to handle related records properly
+  - Delete uploaded image files when resource is deleted
 - **AI Response/Outcome:**
   - **Resource Filtering:**
     - Added date, time, min capacity, and sort by filters to resources index page
@@ -52,10 +54,19 @@ Track AI-assisted development sessions, decisions made, and outcomes to maintain
       - Deletes admin logs if user is admin
     - Added validation to prevent deletion if user owns resources (with clear error message)
     - Updated admin controller to handle ValueError exceptions separately
+  - **Message Deletion Improvements:**
+    - Updated MessageDAL.delete() to delete all MessageReport records before deleting the message
+    - Prevents foreign key constraint errors when deleting messages with reports
+  - **Resource Image Cleanup:**
+    - Updated ResourceDAL.delete() to delete uploaded image files from filesystem when resource is deleted
+    - Only deletes local files (in `src/static/uploads/`), not external URLs
+    - Handles JSON and comma-separated image formats
+    - Error handling ensures resource deletion doesn't fail if image deletion fails
 - **Notes:**
   - All changes maintain backward compatibility
   - Error handling ensures resource creation/approval doesn't fail if messaging fails
-  - User deletion now properly handles foreign key constraints
+  - User and message deletion now properly handle foreign key constraints
+  - Image file cleanup prevents orphaned files in uploads directory
   - Filtering logic matches the search page implementation for consistency
 
 ---
