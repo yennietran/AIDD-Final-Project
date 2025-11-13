@@ -45,9 +45,12 @@ The Campus Resource Hub supports:
 │   └── golden_prompts.md   # High-impact prompts and responses
 ├── tests/                  # Additional tests
 │   └── ai_eval/            # AI feature validation tests
+├── additional deliverables/ # Project deliverables (PRD, ERD, slide deck, reflection)
 ├── app.py                  # Main Flask application entry point
 ├── requirements.txt        # Python dependencies
-└── pytest.ini              # Pytest configuration
+├── pytest.ini              # Pytest configuration
+├── API.md                  # API documentation
+└── AI_SUMMARY_REPORTER.md  # AI Summary Reporter feature documentation
 ```
 
 ## Design Process
@@ -181,12 +184,14 @@ The application will be available at `http://localhost:5000`
 
 1. **Create an Admin Account**: 
    - Visit `/register` to create your first account
-   - Select "Admin" as your role
-   - This account will have full administrative access
+   - **Note:** All new accounts default to "Student" role
+   - To get Admin access, create the account and then request a role change from your dashboard
+   - Alternatively, you can manually update your role in the database if needed for initial setup
 
 2. **Create Test Resources**:
    - Log in and visit `/resources/create` to add resources
-   - Resources can be saved as "draft" or "published"
+   - **Students:** Resources are automatically set to "draft" and require admin approval
+   - **Staff/Admins:** Can publish resources immediately
    - Published resources are visible to all users
 
 3. **Test Booking Flow**:
@@ -194,6 +199,7 @@ The application will be available at `http://localhost:5000`
    - Click on a resource to view details
    - Click "Book Now" to create a booking
    - Bookings may require approval depending on resource settings
+   - If a time slot is unavailable, you can join the waitlist
 
 ## Core Features
 
@@ -201,11 +207,16 @@ The application will be available at `http://localhost:5000`
 - Sign up, sign in, sign out with email + password
 - Passwords stored with bcrypt hashing
 - Role-based access: Student, Staff, Admin
+- **Role Change Requests:** Students can request Staff or Admin access; admins approve/deny requests
+- **Account Security:** Admin can suspend/unsuspend users
 
 ### ✅ Resource Listings
 - Full CRUD operations for resources
 - Fields: title, description, images, category, location, availability rules, capacity
 - Lifecycle: draft → published → archived
+- **Requires Approval Flag:** Resources can be marked to require booking approval
+- **Role-Based Publishing:** Students' resources require admin approval; Staff/Admins can publish immediately
+- Visual availability calendar showing available days and time slots
 
 ### ✅ Search & Filter
 - Keyword search across resources
@@ -214,33 +225,55 @@ The application will be available at `http://localhost:5000`
 
 ### ✅ Booking & Scheduling
 - Calendar-based booking with start/end time
+- Visual calendar showing available/unavailable days and time slots
 - Conflict detection to prevent double-booking
 - Approval workflow: automatic or staff/admin approval
 - Booking statuses: pending, approved, rejected, cancelled, completed
+- **Waitlist Feature:** Join waitlist for fully booked resources; automatic notifications when slots open
+- Same-day booking support with 15-minute buffer
 
 ### ✅ Messaging & Notifications
 - Thread-based messaging between users
 - Message threads grouped by conversation partner
 - Real-time messaging support (AJAX endpoints)
+- Automated notifications for booking approvals/rejections
+- **Content Moderation:** Users can report inappropriate messages
+- Admin can delete reported messages
+- Read/unread message tracking
 
 ### ✅ Reviews & Ratings
 - Users can rate resources (1-5 stars) after completed bookings
 - Aggregate rating calculation
 - Review moderation by admins
+- **Content Moderation:** Users can flag inappropriate reviews
+- Admin can hide, unhide, or delete reviews
+- Review preview (first 3) with "View All Reviews" option
 
 ### ✅ Admin Panel
 - Dashboard with statistics and recent activity
-- User management (view, edit, delete)
-- Resource management and approval queue
+- User management (view, edit, delete, suspend/unsuspend)
+- Resource management and approval queue (approve/reject pending resources)
 - Booking management and approvals
-- Review moderation
-- Admin action logging
+- Review moderation (hide, unhide, delete, ignore flags)
+- Message moderation (delete, ignore reports)
+- **Role Change Requests:** View and approve/deny student requests for Staff/Admin access
+- **AI Summary Report:** AI-powered system analytics and insights
+- Admin action logging (all actions tracked in admin_logs)
 
 ### ✅ RESTful API
 - Complete API endpoints for all features
 - JSON request/response format
 - Authentication via Flask-Login sessions
 - Comprehensive API documentation (see `API.md`)
+
+### ✅ Advanced Features
+- **Waitlist System:** Join waitlist for fully booked resources with automatic notifications
+- **Content Moderation:** Flag reviews and report messages; admin moderation tools
+- **Role Change Requests:** Students can request role upgrades; admin approval workflow
+- **AI Summary Reporter:** AI-powered system analytics using LLMs (Ollama, LM Studio, OpenAI)
+- **Visual Calendar:** Day availability calendar showing available/unavailable days and slot counts
+- **Availability Rules:** Set specific days/times when resources are available
+- **Same-Day Booking:** Support for booking resources on the current day (with 15-minute buffer)
 
 ## Database Migration
 
